@@ -23,6 +23,7 @@ exe = EXE(
     a.datas,
     [],
     name='QuadrantTask',
+    icon='icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,4 +36,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=True,
 )
