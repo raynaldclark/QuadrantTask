@@ -4,7 +4,8 @@
 from datetime import datetime, date
 
 from PySide6.QtCore import Qt, QPoint, QRect, QTimer
-from PySide6.QtGui import QPainter, QPixmap, QColor, QPen, QFont, QCursor, QDrag, QFontMetrics
+from PySide6.QtGui import QPainter, QPixmap, QColor, QPen, QFont, QCursor, QDrag, QFontMetrics, QIcon
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QWidget, QApplication
 
 from constants import (
@@ -14,6 +15,10 @@ from constants import (
     TEXT_DONE,
     TEXT_MAIN,
 )
+
+import os as _os
+_DELETE_ICON_PATH = _os.path.join(_os.path.dirname(__file__), "source", "delete.svg")
+_delete_icon_renderer = QSvgRenderer(_DELETE_ICON_PATH) if _os.path.exists(_DELETE_ICON_PATH) else None
 
 
 class TaskCard(QWidget):
@@ -183,26 +188,28 @@ class TaskCard(QWidget):
             painter.setBrush(QColor("#F1F5F9"))
             painter.drawRoundedRect(bar_rect, 3, 3)
 
-            # 删除按钮
+            # 删除按钮（图标）
             del_rect = self._del_btn_rect = QRect(
                 self.width() - 78, bar_y + 1,
-                72, bar_h - 2
+                bar_h - 2, bar_h - 2
             )
-            self._draw_action_btn(
-                painter, del_rect,
-                self._action_hover_del,
-                "#FEF2F2", "#EF4444",
-                "删除任务",
-            )
+            self._draw_delete_icon(painter, del_rect, self._action_hover_del)
 
-    def _draw_action_btn(self, painter, rect, hovered, bg, fg, text):
-        from PySide6.QtGui import QPen
+    def _draw_delete_icon(self, painter, rect, hovered):
+        bg = "#FEF2F2" if hovered else "transparent"
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(bg))
         painter.drawRoundedRect(rect, 4, 4)
-        painter.setPen(QColor(fg))
-        painter.setFont(QFont(FONT_FAMILY, 11))
-        painter.drawText(rect, Qt.AlignCenter, text)
+        if _delete_icon_renderer:
+            size = rect.height() - 8
+            x = rect.x() + (rect.width() - size) // 2
+            y = rect.y() + 4
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+            p = QPainter(pixmap)
+            _delete_icon_renderer.render(p)
+            p.end()
+            painter.drawPixmap(x, y, pixmap)
 
     def _draw_checkbox(self, painter, rect, checked):
         from PySide6.QtCore import QRect

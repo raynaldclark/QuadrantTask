@@ -2,7 +2,7 @@
 
 基于 PySide6 的艾森豪威尔矩阵（Eisenhower Matrix）任务管理桌面应用。
 
-![预览图](Preview.jpg)
+![预览图](source/Preview.jpg)
 
 ## 功能特性
 
