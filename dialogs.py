@@ -246,7 +246,7 @@ class EditTaskDialog(QDialog):
 
         self.setWindowTitle("修改任务")
         self.setModal(True)
-        self.setFixedSize(460, 380)
+        self.setFixedSize(460, 420)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
