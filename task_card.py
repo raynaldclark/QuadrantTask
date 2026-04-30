@@ -189,13 +189,14 @@ class TaskCard(QWidget):
                 28, bar_h
             )
             self._draw_delete_icon(painter, del_rect, self._action_hover_del)
+
     def _draw_delete_icon(self, painter, rect, hovered):
         if _delete_icon_renderer:
             size = int(rect.height() * 1.6)
             if size > rect.width():
                 size = rect.width()
             x = rect.x() + (rect.width() - size) // 2
-            y = rect.y()
+            y = rect.y() + (rect.height() - size) // 2
             pixmap = QPixmap(size, size)
             pixmap.fill(Qt.transparent)
             p = QPainter(pixmap)
