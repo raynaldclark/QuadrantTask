@@ -201,9 +201,9 @@ class TaskCard(QWidget):
         painter.setBrush(QColor(bg))
         painter.drawRoundedRect(rect, 4, 4)
         if _delete_icon_renderer:
-            size = rect.height() - 8
+            size = rect.height() - 2
             x = rect.x() + (rect.width() - size) // 2
-            y = rect.y() + 4
+            y = rect.y() + 1
             pixmap = QPixmap(size, size)
             pixmap.fill(Qt.transparent)
             p = QPainter(pixmap)
