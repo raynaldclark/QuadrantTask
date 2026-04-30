@@ -16,9 +16,15 @@ from constants import (
     TEXT_MAIN,
 )
 
-import os as _os
-_DELETE_ICON_PATH = _os.path.join(_os.path.dirname(__file__), "source", "delete.svg")
-_delete_icon_renderer = QSvgRenderer(_DELETE_ICON_PATH) if _os.path.exists(_DELETE_ICON_PATH) else None
+import os
+import sys
+
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = sys._MEIPASS
+else:
+    _BASE_DIR = os.path.dirname(__file__)
+_DELETE_ICON_PATH = os.path.join(_BASE_DIR, "source", "delete.svg")
+_delete_icon_renderer = QSvgRenderer(_DELETE_ICON_PATH) if os.path.exists(_DELETE_ICON_PATH) else None
 
 
 class TaskCard(QWidget):

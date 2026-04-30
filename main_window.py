@@ -47,7 +47,12 @@ class MainWindow(QMainWindow):
 
     def _set_window_icon(self):
         import os
-        icon_path = os.path.join(os.path.dirname(__file__), "source", "icon.svg")
+        import sys
+        if getattr(sys, 'frozen', False):
+            _BASE_DIR = sys._MEIPASS
+        else:
+            _BASE_DIR = os.path.dirname(__file__)
+        icon_path = os.path.join(_BASE_DIR, "source", "icon.svg")
         if os.path.exists(icon_path):
             renderer = QSvgRenderer(icon_path)
             pixmap = QPixmap(256, 256)
