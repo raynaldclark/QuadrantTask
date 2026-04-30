@@ -190,16 +190,12 @@ class TaskCard(QWidget):
 
             # 删除按钮（图标）
             del_rect = self._del_btn_rect = QRect(
-                self.width() - 78, bar_y + 1,
+                self.width() - 30, bar_y + 1,
                 bar_h - 2, bar_h - 2
             )
             self._draw_delete_icon(painter, del_rect, self._action_hover_del)
 
-    def _draw_delete_icon(self, painter, rect, hovered):
-        bg = "#FEF2F2" if hovered else "transparent"
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(bg))
-        painter.drawRoundedRect(rect, 4, 4)
+def _draw_delete_icon(self, painter, rect, hovered):
         if _delete_icon_renderer:
             size = rect.height() - 2
             x = rect.x() + (rect.width() - size) // 2
