@@ -180,15 +180,6 @@ class TaskCard(QWidget):
         if self._show_actions:
             bar_h = fm_dl.lineSpacing()
             bar_y = (self.height() - bar_h) // 2
-            bar_rect = QRect(
-                self.width() - 82, bar_y,
-                77, bar_h
-            )
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor("#F1F5F9"))
-            painter.drawRoundedRect(bar_rect, 3, 3)
-
-            # 删除按钮（图标）
             del_rect = self._del_btn_rect = QRect(
                 self.width() - 30, bar_y + 1,
                 bar_h - 2, bar_h - 2
