@@ -1,0 +1,80 @@
+{
+  "font_size": 14,
+  "geometry": "AdnQywADAAAAAAMHAAAB6gAABiYAAATBAAADBwAAAgkAAAYmAAAEwQAAAAAAAAAACgAAAAMHAAACCQAABiYAAATB",
+  "deadline_colors": {
+    "overdue": "#EF4444",
+    "today": "#F97316",
+    "days3": "#EAB308",
+    "days7": "#22C55E",
+    "normal": "#3B82F6",
+    "none": "#94A3B8"
+  },
+  "deadline_thresholds": {
+    "days3": 7,
+    "days7": 21
+  },
+  "tasks": {
+    "q1": [
+      {
+        "id": "ec90930c-be8f-487d-b787-056672aafff2",
+        "text": "准备部门汇报材料",
+        "done": false,
+        "deadline": "2026-5-6"
+      },
+      {
+        "id": "b2920b07-fc6f-4dc2-8d32-48dc9e5d4833",
+        "text": "处理邮箱中的用户投诉",
+        "done": false,
+        "deadline": "2026-4-30"
+      }
+    ],
+    "q2": [
+      {
+        "id": "368b299b-4002-43a1-aad7-80f267495d80",
+        "text": "制定第三季度的工作计划",
+        "done": false,
+        "deadline": "2026-5-30"
+      },
+      {
+        "id": "2ca45eef-783d-4508-b439-b4437d0bfc0a",
+        "text": "团队培训方案制定",
+        "done": false,
+        "deadline": "2026-6-15"
+      },
+      {
+        "id": "8b119cf3-37bc-4925-bc97-f14324b1ce69",
+        "text": "数据分析培训",
+        "done": false,
+        "deadline": "2026-5-12"
+      }
+    ],
+    "q3": [
+      {
+        "id": "15c45a06-d867-4715-bc6f-fa927a0c93f8",
+        "text": "预订团队会议场地",
+        "done": false,
+        "deadline": "2026-5-2"
+      },
+      {
+        "id": "8e9b778b-274e-45a2-8f92-dc0f42538e7e",
+        "text": "整理本周工作",
+        "done": false,
+        "deadline": "2026-5-1"
+      }
+    ],
+    "q4": [
+      {
+        "id": "048d7b0e-cfb2-4fc0-a849-9bdd2358cdef",
+        "text": "PC驻场维护服务合同签署",
+        "done": false,
+        "deadline": "2026-7-31"
+      },
+      {
+        "id": "3925c9ac-ff97-4d90-85ea-74085bc35a6e",
+        "text": "整理项目文件与会议纪要，与XX完成交接",
+        "done": false,
+        "deadline": "2026-8-31"
+      }
+    ]
+  }
+}

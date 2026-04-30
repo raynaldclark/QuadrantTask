@@ -35,11 +35,10 @@ DEADLINE_COLORS_DEFAULT = {
 DEADLINE_THRESHOLDS_DEFAULT = {
     "days3":  3,
     "days7":  7,
-    "normal": 999,
 }
 
 # ─── 截止日期阈值键的顺序（用于 SettingsDialog 渲染）─────────────────────────
-DEADLINE_THRESHOLD_KEYS = ["days3", "days7", "normal"]
+DEADLINE_THRESHOLD_KEYS = ["days3", "days7"]
 
 # ─── 象限定义 ─────────────────────────────────────────────────────────────────
 QUADS = [

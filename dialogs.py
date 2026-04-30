@@ -6,9 +6,9 @@ import uuid
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
-    QDialog, QWidget, QVBoxLayout, QHBoxLayout,
+    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QFrame, QTextEdit, QLineEdit,
-    QComboBox, QPushButton, QSpinBox, QColorDialog,
+    QPushButton, QSpinBox, QColorDialog,
 )
 
 from constants import (
@@ -61,10 +61,13 @@ class AddTaskDialog(QDialog):
         super().__init__(parent)
         self.fs = font_size
         self._result = None
+        self._quad_keys = quad_keys
+        self._quad_titles = quad_titles
+        self._selected_key = quad_keys[quad_titles.index(default_quad)] if default_quad in quad_titles else quad_keys[0]
 
         self.setWindowTitle("添加任务")
         self.setModal(True)
-        self.setFixedSize(460, 380)
+        self.setFixedSize(460, 420)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -89,23 +92,18 @@ class AddTaskDialog(QDialog):
         b.addWidget(self.text_edit)
 
         # 象限选择
-        row = QHBoxLayout()
-        row.addWidget(QLabel("象限"))
-        row.addStretch()
-        self.quad_combo = QComboBox()
-        self.quad_combo.addItems(quad_titles)
-        try:
-            self.quad_combo.setCurrentIndex(quad_titles.index(default_quad))
-        except Exception:
-            pass
-        self.quad_combo.setFont(QFont(FONT_FAMILY, self.fs - 1))
-        self.quad_combo.setFixedWidth(200)
-        self.quad_combo.setStyleSheet(f"""
-            QComboBox {{ border: 1px solid #CBD5E1; border-radius: 6px;
-                        padding: 6px 12px; color: {TEXT_MAIN}; background: #FFFFFF; }}
-        """)
-        row.addWidget(self.quad_combo)
-        b.addLayout(row)
+        b.addWidget(QLabel("象限"))
+        grid = QGridLayout()
+        grid.setSpacing(8)
+        self._quad_cards = {}
+        positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        for i, cfg in enumerate(QUADS):
+            r, c = positions[i]
+            card = self._build_quad_card(cfg)
+            grid.addWidget(card, r, c)
+            self._quad_cards[cfg["key"]] = card
+        self._update_quad_cards()
+        b.addLayout(grid)
 
         # 截止日期
         b.addWidget(QLabel("截止日期（可选）"))
@@ -167,26 +165,72 @@ class AddTaskDialog(QDialog):
             """)
             return
 
-        quad_title = self.quad_combo.currentText()
-        quad_titles = [q["title"] for q in QUADS]
-        quad_keys = [q["key"] for q in QUADS]
-        try:
-            q_key = quad_keys[quad_titles.index(quad_title)]
-        except Exception:
-            q_key = QUADS[0]["key"]
-
         dl = self.dl_edit.text().strip()
         if dl == "YYYY-MM-DD":
             dl = ""
 
         self._result = (
             {"id": str(uuid.uuid4()), "text": text, "done": False, "deadline": dl},
-            q_key,
+            self._selected_key,
         )
         self.accept()
 
     def get_result(self):
         return self._result
+
+    def _build_quad_card(self, cfg):
+        card = QFrame()
+        card.setCursor(Qt.PointingHandCursor)
+        card.setFixedHeight(52)
+        card._cfg = cfg
+        card._sel_lbl = None
+        self._update_card_style(card, False)
+        lay = QHBoxLayout(card)
+        lay.setContentsMargins(10, 6, 10, 6)
+        lay.setSpacing(8)
+        tag = QFrame()
+        tag.setFixedSize(6, 36)
+        tag.setStyleSheet(f"background:{cfg['tag_bg']}; border-radius: 3px;")
+        lay.addWidget(tag)
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        title_lbl = QLabel(cfg["title"])
+        title_lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        title_lbl.setStyleSheet(f"color:{cfg['header_fg']}; background:transparent; border:none;")
+        text_col.addWidget(title_lbl)
+        sub_lbl = QLabel(cfg["subtitle"])
+        sub_lbl.setFont(QFont(FONT_FAMILY, 10))
+        sub_lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
+        text_col.addWidget(sub_lbl)
+        lay.addLayout(text_col)
+        lay.addStretch()
+        sel_lbl = QLabel("✓")
+        sel_lbl.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+        sel_lbl.setStyleSheet("color:#3B82F6; background:transparent; border:none;")
+        sel_lbl.setFixedWidth(24)
+        sel_lbl.setVisible(False)
+        lay.addWidget(sel_lbl)
+        card._sel_lbl = sel_lbl
+        card.mousePressEvent = lambda _, k=cfg["key"]: self._select_quad(k)
+        return card
+
+    def _update_card_style(self, card, selected):
+        cfg = card._cfg
+        border_color = "#3B82F6" if selected else cfg["border"]
+        card.setStyleSheet(
+            f"background:{cfg['body_bg']}; border: 2px solid {border_color}; "
+            f"border-radius: 6px;"
+        )
+
+    def _select_quad(self, key):
+        self._selected_key = key
+        self._update_quad_cards()
+
+    def _update_quad_cards(self):
+        for key, card in self._quad_cards.items():
+            is_sel = key == self._selected_key
+            self._update_card_style(card, is_sel)
+            card._sel_lbl.setVisible(is_sel)
 
 
 # ─── EditTaskDialog ───────────────────────────────────────────────────────────
@@ -196,6 +240,9 @@ class EditTaskDialog(QDialog):
         super().__init__(parent)
         self.fs = font_size
         self._result = None
+        self._quad_keys = quad_keys
+        self._quad_titles = quad_titles
+        self._selected_key = current_quad
 
         self.setWindowTitle("修改任务")
         self.setModal(True)
@@ -225,23 +272,18 @@ class EditTaskDialog(QDialog):
         b.addWidget(self.text_edit)
 
         # 象限选择
-        row = QHBoxLayout()
-        row.addWidget(QLabel("象限"))
-        row.addStretch()
-        self.quad_combo = QComboBox()
-        self.quad_combo.addItems(quad_titles)
-        try:
-            self.quad_combo.setCurrentIndex(quad_keys.index(current_quad))
-        except Exception:
-            pass
-        self.quad_combo.setFont(QFont(FONT_FAMILY, self.fs - 1))
-        self.quad_combo.setFixedWidth(200)
-        self.quad_combo.setStyleSheet(f"""
-            QComboBox {{ border: 1px solid #CBD5E1; border-radius: 6px;
-                        padding: 6px 12px; color: {TEXT_MAIN}; background: #FFFFFF; }}
-        """)
-        row.addWidget(self.quad_combo)
-        b.addLayout(row)
+        b.addWidget(QLabel("象限"))
+        grid = QGridLayout()
+        grid.setSpacing(8)
+        self._quad_cards = {}
+        positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        for i, cfg in enumerate(QUADS):
+            r, c = positions[i]
+            card = self._build_quad_card(cfg)
+            grid.addWidget(card, r, c)
+            self._quad_cards[cfg["key"]] = card
+        self._update_quad_cards()
+        b.addLayout(grid)
 
         # 截止日期
         b.addWidget(QLabel("截止日期（可选）"))
@@ -303,23 +345,69 @@ class EditTaskDialog(QDialog):
             """)
             return
 
-        quad_title = self.quad_combo.currentText()
-        quad_titles = [q["title"] for q in QUADS]
-        quad_keys = [q["key"] for q in QUADS]
-        try:
-            q_key = quad_keys[quad_titles.index(quad_title)]
-        except Exception:
-            q_key = QUADS[0]["key"]
-
         dl = self.dl_edit.text().strip()
         if dl == "YYYY-MM-DD":
             dl = ""
 
-        self._result = (text, dl, q_key)
+        self._result = (text, dl, self._selected_key)
         self.accept()
 
     def get_result(self):
         return self._result
+
+    def _build_quad_card(self, cfg):
+        card = QFrame()
+        card.setCursor(Qt.PointingHandCursor)
+        card.setFixedHeight(52)
+        card._cfg = cfg
+        card._sel_lbl = None
+        self._update_card_style(card, False)
+        lay = QHBoxLayout(card)
+        lay.setContentsMargins(10, 6, 10, 6)
+        lay.setSpacing(8)
+        tag = QFrame()
+        tag.setFixedSize(6, 36)
+        tag.setStyleSheet(f"background:{cfg['tag_bg']}; border-radius: 3px;")
+        lay.addWidget(tag)
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        title_lbl = QLabel(cfg["title"])
+        title_lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        title_lbl.setStyleSheet(f"color:{cfg['header_fg']}; background:transparent; border:none;")
+        text_col.addWidget(title_lbl)
+        sub_lbl = QLabel(cfg["subtitle"])
+        sub_lbl.setFont(QFont(FONT_FAMILY, 10))
+        sub_lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
+        text_col.addWidget(sub_lbl)
+        lay.addLayout(text_col)
+        lay.addStretch()
+        sel_lbl = QLabel("✓")
+        sel_lbl.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+        sel_lbl.setStyleSheet("color:#3B82F6; background:transparent; border:none;")
+        sel_lbl.setFixedWidth(24)
+        sel_lbl.setVisible(False)
+        lay.addWidget(sel_lbl)
+        card._sel_lbl = sel_lbl
+        card.mousePressEvent = lambda _, k=cfg["key"]: self._select_quad(k)
+        return card
+
+    def _update_card_style(self, card, selected):
+        cfg = card._cfg
+        border_color = "#3B82F6" if selected else cfg["border"]
+        card.setStyleSheet(
+            f"background:{cfg['body_bg']}; border: 2px solid {border_color}; "
+            f"border-radius: 6px;"
+        )
+
+    def _select_quad(self, key):
+        self._selected_key = key
+        self._update_quad_cards()
+
+    def _update_quad_cards(self):
+        for key, card in self._quad_cards.items():
+            is_sel = key == self._selected_key
+            self._update_card_style(card, is_sel)
+            card._sel_lbl.setVisible(is_sel)
 
 
 # ─── SettingsDialog ────────────────────────────────────────────────────────────
@@ -329,7 +417,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self._colors = dict(data.get("deadline_colors", {}))
         self._thresholds = dict(
-            data.get("deadline_thresholds", {"days3": 3, "days7": 7, "normal": 999})
+            data.get("deadline_thresholds", {"days3": 3, "days7": 7})
         )
 
         self.setWindowTitle("设置")
@@ -377,12 +465,13 @@ class SettingsDialog(QDialog):
         for key, label_text, default_val in [
             ("days3",  "即将到期", 3),
             ("days7",  "近期",     7),
-            ("normal", "正常",     999),
         ]:
             self._add_config_row_to_grid(grid, row_idx, key, label_text, default_val)
             row_idx += 1
 
-        # 固定项（无 spin、无阈值）
+        # 固定项（无 spin）：正常、无日期
+        self._add_fixed_row_to_grid(grid, row_idx, "normal", "正常", "更长时间", "normal")
+        row_idx += 1
         self._add_fixed_row_to_grid(grid, row_idx, "none", "无日期", "—", "none")
         row_idx += 1
 

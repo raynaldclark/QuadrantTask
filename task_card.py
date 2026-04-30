@@ -48,7 +48,6 @@ class TaskCard(QWidget):
         self._hover = False
         self._target_quad = None          # 拖拽悬停目标象限
         self._show_actions = False        # hover 动作条
-        self._action_hover_edit = False
         self._action_hover_del = False
 
         self.setCursor(QCursor(Qt.OpenHandCursor))
@@ -142,21 +141,18 @@ class TaskCard(QWidget):
         line_h = fm.lineSpacing() + 2
         fm_dl = QFontMetrics(QFont(FONT_FAMILY, self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12   # 12 = 左右各6px padding
-        # 日期区域右边界固定在 card 右边缘 -5
-        # 日期区域左边界 = card_right - dl_w
-        # 文字区域右边界 = 日期左边界 - 4px 间隙
-        text_right_adj = -(dl_w + 4)
-        text_w = chk_rect.right() + 4 - text_right_adj
-        text_lines = max(1, fm.boundingRect(
-            0, 0, text_w,
-            0, Qt.TextWordWrap, self.task.get("text", "")
-        ).height() // line_h)
+        # 文字区域右边界 = card_right - dl_w - 4（即日期左边界 - 4px inset）
+        text_right = self.width() - dl_w - 4
+        text_w = text_right - chk_rect.right() - 4
+        # boundingRect height=0 时 TextWordWrap 不生效，改用 horizontalAdvance 计算换行
+        unwrapped_w = fm.horizontalAdvance(self.task.get("text", ""))
+        text_lines = max(1, (unwrapped_w + text_w - 1) // text_w)
         card_h = max(40, line_h * text_lines + 10)
-        if self.height() < card_h:
+        if self.height() != card_h:
             self.setFixedHeight(card_h)
 
-        # 文字区域右边界 = card_width - (dl_w + 4)（即日期左边界 - 4px inset）
-        text_rect = self.rect().adjusted(chk_rect.right() + 4, 0, text_right_adj, 0)
+        # 文字区域右边界 = 日期左边界 - 4px inset
+        text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
         painter.drawText(
             text_rect.adjusted(4, 0, 0, 0),
             Qt.AlignVCenter | Qt.TextWordWrap,
@@ -177,33 +173,20 @@ class TaskCard(QWidget):
 
         # ── hover 动作条 ──
         if self._show_actions:
-            bar_h = 32
-            bar_rect = self.rect().adjusted(0, self.height() - bar_h, 0, 0)
+            bar_h = fm_dl.lineSpacing()
+            bar_y = (self.height() - bar_h) // 2
+            bar_rect = QRect(
+                self.width() - 82, bar_y,
+                77, bar_h
+            )
             painter.setPen(Qt.NoPen)
             painter.setBrush(QColor("#F1F5F9"))
-            painter.drawRect(bar_rect)
-            # 顶部分隔线
-            painter.setPen(QPen(QColor("#E2E8F0"), 1))
-            painter.drawLine(0, self.height() - bar_h, self.width(), self.height() - bar_h)
-
-            # 修改按钮
-            edit_rect = self.rect().adjusted(
-                self.width() // 2 - 80, self.height() - bar_h + 4,
-                -(self.width() - self.width() // 2 - 8), -(bar_h - 8 + self.height() - bar_h)
-            )
-            edit_rect = self._edit_btn_rect = self._make_btn_rect(
-                self.width() // 2 - 80, self.height() - bar_h + 4, 72, bar_h - 8
-            )
-            self._draw_action_btn(
-                painter, edit_rect,
-                self._action_hover_edit,
-                "#EFF6FF", "#3B82F6",
-                "修改任务",
-            )
+            painter.drawRoundedRect(bar_rect, 3, 3)
 
             # 删除按钮
-            del_rect = self._del_btn_rect = self._make_btn_rect(
-                self.width() // 2 - 4, self.height() - bar_h + 4, 72, bar_h - 8
+            del_rect = self._del_btn_rect = QRect(
+                self.width() - 78, bar_y + 1,
+                72, bar_h - 2
             )
             self._draw_action_btn(
                 painter, del_rect,
@@ -211,10 +194,6 @@ class TaskCard(QWidget):
                 "#FEF2F2", "#EF4444",
                 "删除任务",
             )
-
-    def _make_btn_rect(self, x, y, w, h):
-        from PySide6.QtCore import QRect
-        return QRect(x, y, w, h)
 
     def _draw_action_btn(self, painter, rect, hovered, bg, fg, text):
         from PySide6.QtGui import QPen
@@ -248,10 +227,6 @@ class TaskCard(QWidget):
 
             # 动作条按钮优先检测
             if self._show_actions:
-                if getattr(self, "_edit_btn_rect", None) and self._edit_btn_rect.contains(pos):
-                    self.on_edit(self.task)
-                    self._hide_action_bar()
-                    return
                 if getattr(self, "_del_btn_rect", None) and self._del_btn_rect.contains(pos):
                     self.on_delete(self.task["id"])
                     self._hide_action_bar()
@@ -273,10 +248,8 @@ class TaskCard(QWidget):
         # 动作条 hover 检测
         if self._show_actions:
             pos = event.position().toPoint()
-            edit_h = getattr(self, "_edit_btn_rect", None) and self._edit_btn_rect.contains(pos)
             del_h  = getattr(self, "_del_btn_rect", None) and self._del_btn_rect.contains(pos)
-            if bool(edit_h) != self._action_hover_edit or bool(del_h) != self._action_hover_del:
-                self._action_hover_edit = bool(edit_h)
+            if bool(del_h) != self._action_hover_del:
                 self._action_hover_del  = bool(del_h)
                 self.update()
 
@@ -323,6 +296,10 @@ class TaskCard(QWidget):
         self._dragging = False
         self.setCursor(QCursor(Qt.OpenHandCursor))
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.on_edit(self.task)
+
     def enterEvent(self, event):
         self._hover = True
         self._action_timer.start(300)
@@ -340,7 +317,6 @@ class TaskCard(QWidget):
 
     def _hide_action_bar(self):
         self._show_actions = False
-        self._action_hover_edit = False
         self._action_hover_del = False
         self._action_timer.stop()
         self.update()
@@ -352,7 +328,4 @@ class TaskCard(QWidget):
         line_h = font_h + 2                  # 行间距（word wrap 空间）
         lines  = self.task.get("text", "").count("\n") + 1
         base_h = max(40, line_h * lines + 8)  # 最小 40px
-
-        action_h = 32 if self._show_actions else 0
-        h = base_h + action_h
-        return QRect(0, 0, 400, h).size()
+        return QRect(0, 0, 400, base_h).size()

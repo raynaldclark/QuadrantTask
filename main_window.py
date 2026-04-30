@@ -199,12 +199,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         central.setStyleSheet(f"background:{BG_PAGE};")
 
-        layout = QGridLayout(central)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(8)
-        # 左右两列等宽
-        layout.setColumnStretch(0, 1)
-        layout.setColumnStretch(1, 1)
+        self._board_layout = QGridLayout(central)
+        self._board_layout.setContentsMargins(16, 12, 16, 12)
+        self._board_layout.setSpacing(8)
+        self._board_layout.setColumnStretch(0, 1)
+        self._board_layout.setColumnStretch(1, 1)
 
         positions = [(0, 0), (0, 1), (1, 0), (1, 1)]
         self.panels = {}
@@ -212,7 +211,7 @@ class MainWindow(QMainWindow):
             r, c = positions[i]
             panel = QuadrantPanel(cfg, self.data, self)
             panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-            layout.addWidget(panel, r, c)
+            self._board_layout.addWidget(panel, r, c)
             self.panels[cfg["key"]] = panel
             panel.render_tasks()
 

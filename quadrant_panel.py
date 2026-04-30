@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """QuadrantPanel：可接受拖拽的象限面板"""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
@@ -51,7 +51,7 @@ class QuadrantPanel(QFrame):
                 on_edit=self._on_edit,
             )
             self.task_layout.insertWidget(self.task_layout.count() - 1, card)
-            card.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+            card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         self._update_count()
 
@@ -125,9 +125,9 @@ class QuadrantPanel(QFrame):
         self.count_label.setAlignment(Qt.AlignCenter)
         self.count_label.setStyleSheet(
             f"color:#FFFFFF; background:{self.cfg['header_fg']}; "
-            f"font-size:10px; font-weight:bold; padding:1px 8px; border-radius:10px;"
+            f"font-size:14px; font-weight:bold; padding:0px 6px;"
         )
-        self.count_label.setFixedHeight(18)
+        self.count_label.setFixedHeight(20)
         title_row.addWidget(self.count_label)
         title_row.addStretch()
         h_layout.addLayout(title_row)
@@ -135,10 +135,10 @@ class QuadrantPanel(QFrame):
         parent_layout.addWidget(header)
 
     def _build_scroll_area(self, parent_layout):
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setStyleSheet(
             f'QScrollArea {{ background: {self.cfg["body_bg"]}; border: none; }}\n'
             "QScrollBar:vertical { background: transparent; width: 6px; }\n"
             "QScrollBar::handle { background: #CBD5E1; border-radius: 3px; }\n"
@@ -151,8 +151,9 @@ class QuadrantPanel(QFrame):
         self.task_layout.setSpacing(6)
         self.task_layout.addStretch()
 
-        scroll.setWidget(self.task_container)
-        parent_layout.addWidget(scroll)
+        self.scroll.setWidget(self.task_container)
+        self.scroll.viewport().installEventFilter(self)
+        parent_layout.addWidget(self.scroll)
 
     def _apply_style(self):
         self.setStyleSheet(
@@ -161,6 +162,12 @@ class QuadrantPanel(QFrame):
         )
 
     # ─── 拖拽事件 ──────────────────────────────────────────────────────────────
+
+    def eventFilter(self, obj, event):
+        if obj is self.scroll.viewport() and event.type() == QEvent.Type.MouseButtonDblClick:
+            self.app._show_add_dialog(self.cfg["title"])
+            return True
+        return super().eventFilter(obj, event)
 
     def dragEnterEvent(self, event):
         mime = event.mimeData()
