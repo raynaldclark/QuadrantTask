@@ -1,6 +1,6 @@
 {
-  "font_size": 14,
-  "geometry": "AdnQywADAAAAAAMHAAAB6gAABiYAAATBAAADBwAAAgkAAAYmAAAEwQAAAAAAAAAACgAAAAMHAAACCQAABiYAAATB",
+  "font_size": 15,
+  "geometry": "AdnQywADAAAAAAMHAAAB6gAABnEAAATBAAADBwAAAgkAAAZxAAAEwQAAAAAAAAAACgAAAAMHAAACCQAABnEAAATB",
   "deadline_colors": {
     "overdue": "#EF4444",
     "today": "#F97316",
@@ -15,12 +15,6 @@
   },
   "tasks": {
     "q1": [
-      {
-        "id": "ec90930c-be8f-487d-b787-056672aafff2",
-        "text": "准备部门汇报材料",
-        "done": false,
-        "deadline": "2026-5-6"
-      },
       {
         "id": "b2920b07-fc6f-4dc2-8d32-48dc9e5d4833",
         "text": "处理邮箱中的用户投诉",
