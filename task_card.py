@@ -192,7 +192,7 @@ class TaskCard(QWidget):
 
     def _draw_delete_icon(self, painter, rect, hovered):
         if _delete_icon_renderer:
-            size = int(rect.height() * 1.6)
+            size = self.font_size * 2
             if size > rect.width():
                 size = rect.width()
             x = rect.x() + (rect.width() - size) // 2
