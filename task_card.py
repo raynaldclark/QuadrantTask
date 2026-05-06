@@ -149,20 +149,19 @@ class TaskCard(QWidget):
 
         # 日期宽度按字号精确计算（10字符 + 左右padding）
         fm = QFontMetrics(font)
-        line_h = fm.lineSpacing() + 2
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12   # 12 = 左右各6px padding
         # 文字区域右边界 = card_right - dl_w - 4（即日期左边界 - 4px inset）
         text_right = self.width() - dl_w - 4
         text_w = text_right - chk_rect.right() - 4
-        # boundingRect height=0 时 TextWordWrap 不生效，改用 horizontalAdvance 计算换行
-        unwrapped_w = fm.horizontalAdvance(self.task.get("text", ""))
-        text_lines = max(1, (unwrapped_w + text_w - 1) // text_w)
-        card_h = max(40, line_h * text_lines + 10)
-        if self.height() != card_h:
+        # 使用 boundingRect 获取 Qt 实际换行后的精确高度
+        br_rect = QRect(0, 0, text_w, 1677216)
+        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
+        card_h = max(40, br.height() + 10)
+        if abs(self.height() - card_h) > 1:
             self.setFixedHeight(card_h)
 
-        # 文字区域右边界 = 日期左边界 - 4px inset
+        # 文字区域
         text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
         painter.drawText(
             text_rect.adjusted(4, 0, 0, 0),
