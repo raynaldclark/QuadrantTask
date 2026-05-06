@@ -17,10 +17,10 @@ from constants import (
     BG_TOOLBAR,
     BTN_PRIMARY_BG,
     BTN_PRIMARY_FG,
-    FONT_FAMILY,
     QUADS,
     TEXT_MAIN,
     TEXT_SUB,
+    get_font_family,
 )
 from data import load_data, save_data
 from dialogs import AddTaskDialog, EditTaskDialog, SettingsDialog
@@ -38,6 +38,10 @@ class MainWindow(QMainWindow):
         self._set_window_icon()
         self.setMinimumSize(640, 600)
         self.setStyleSheet(f"background:{BG_PAGE};")
+
+        from constants import set_font_family
+        saved_font = self.data.get("font_family", "Microsoft YaHei")
+        set_font_family(saved_font)
 
         geo = self.data.get("geometry")
         if geo:
@@ -197,11 +201,11 @@ class MainWindow(QMainWindow):
         # 左侧标题区
         title_col = QVBoxLayout()
         main_t = QLabel("四象限任务板")
-        main_t.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+        main_t.setFont(QFont(get_font_family(), 16, QFont.Bold))
         main_t.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; border:none;")
         title_col.addWidget(main_t)
         sub_t = QLabel("艾森豪威尔矩阵")
-        sub_t.setFont(QFont(FONT_FAMILY, 10))
+        sub_t.setFont(QFont(get_font_family(), 10))
         sub_t.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
         title_col.addWidget(sub_t)
         t.addLayout(title_col)
@@ -257,7 +261,7 @@ class MainWindow(QMainWindow):
         vbox.setSpacing(2)
         vbox.addWidget(btn)
         lbl = QLabel(label_text)
-        lbl.setFont(QFont(FONT_FAMILY, 8))
+        lbl.setFont(QFont(get_font_family(), 8))
         lbl.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
         lbl.setFixedHeight(14)
@@ -300,7 +304,7 @@ class MainWindow(QMainWindow):
         vbox.setSpacing(2)
         vbox.addWidget(btn)
         lbl = QLabel(label_text)
-        lbl.setFont(QFont(FONT_FAMILY, 8))
+        lbl.setFont(QFont(get_font_family(), 8))
         lbl.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
         lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
         lbl.setFixedHeight(14)
@@ -313,7 +317,7 @@ class MainWindow(QMainWindow):
         box = QHBoxLayout()
 
         minus = QPushButton("A−")
-        minus.setFont(QFont(FONT_FAMILY, 10))
+        minus.setFont(QFont(get_font_family(), 10))
         minus.setFixedSize(36, 28)
         minus.setCursor(Qt.PointingHandCursor)
         minus.setStyleSheet(
@@ -324,14 +328,14 @@ class MainWindow(QMainWindow):
         box.addWidget(minus)
 
         self.font_label = QLabel(str(self.data["font_size"]))
-        self.font_label.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
+        self.font_label.setFont(QFont(get_font_family(), 11, QFont.Bold))
         self.font_label.setAlignment(Qt.AlignCenter)
         self.font_label.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; border:none;")
         self.font_label.setFixedWidth(24)
         box.addWidget(self.font_label)
 
         plus = QPushButton("A＋")
-        plus.setFont(QFont(FONT_FAMILY, 10))
+        plus.setFont(QFont(get_font_family(), 10))
         plus.setFixedSize(36, 28)
         plus.setCursor(Qt.PointingHandCursor)
         plus.setStyleSheet(
@@ -346,7 +350,7 @@ class MainWindow(QMainWindow):
     def _toolbar_btn(self, text, danger=False):
         if danger:
             btn = QPushButton(text)
-            btn.setFont(QFont(FONT_FAMILY, 11))
+            btn.setFont(QFont(get_font_family(), 11))
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(f"""
                 QPushButton {{ background: #FFF0F0; color: #DC2626;
@@ -355,7 +359,7 @@ class MainWindow(QMainWindow):
             """)
         else:
             btn = QPushButton(text)
-            btn.setFont(QFont(FONT_FAMILY, 11))
+            btn.setFont(QFont(get_font_family(), 11))
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(f"""
                 QPushButton {{ background: transparent; color: {TEXT_SUB};
@@ -363,6 +367,28 @@ class MainWindow(QMainWindow):
                 QPushButton:hover {{ background: #F1F5F9; color: {TEXT_MAIN}; }}
             """)
         return btn
+
+    def _rebuild_ui(self):
+        toolbar = self.menuWidget()
+        if toolbar:
+            self._update_widget_fonts(toolbar)
+
+    def _update_widget_fonts(self, widget):
+        from constants import get_font_family
+        font_size_map = {8: 8, 10: 10, 11: 11, 13: 13, 14: 14, 16: 16}
+        for child in widget.children():
+            if isinstance(child, QLabel):
+                cur = child.font()
+                size = cur.pointSize()
+                if size > 0:
+                    child.setFont(QFont(get_font_family(), size, cur.weight(), cur.italic()))
+            elif isinstance(child, QPushButton):
+                cur = child.font()
+                size = cur.pointSize()
+                if size > 0:
+                    child.setFont(QFont(get_font_family(), size, cur.weight(), cur.italic()))
+            if isinstance(child, QWidget):
+                self._update_widget_fonts(child)
 
     # ─── 四象限面板 ─────────────────────────────────────────────────────────────
 
@@ -528,11 +554,16 @@ class MainWindow(QMainWindow):
                 p.clear_all()
 
     def _show_settings(self):
+        from constants import set_font_family
         dialog = SettingsDialog(self.data, self)
         if dialog.exec() == SettingsDialog.Accepted:
             self.data["deadline_colors"] = dialog.get_colors()
             self.data["deadline_thresholds"] = dialog.get_thresholds()
+            new_font = dialog.get_font_family()
+            self.data["font_family"] = new_font
+            set_font_family(new_font)
             self.save()
+            self._rebuild_ui()
             for p in self.panels.values():
                 p.render_tasks()
 

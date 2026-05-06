@@ -2,7 +2,14 @@
 """全局常量：象限定义、颜色、字体等"""
 
 # ─── 字体 ────────────────────────────────────────────────────────────────────
-FONT_FAMILY = "Microsoft YaHei"
+_FONT_FAMILY = "Microsoft YaHei"
+
+def get_font_family():
+    return _FONT_FAMILY
+
+def set_font_family(name):
+    global _FONT_FAMILY
+    _FONT_FAMILY = name
 
 # ─── 页面 / 工具栏背景 ────────────────────────────────────────────────────────
 BG_PAGE    = "#F1F5F9"

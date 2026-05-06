@@ -11,9 +11,9 @@ from PySide6.QtWidgets import QWidget, QApplication
 from constants import (
     CARD_BG,
     CARD_BORDER,
-    FONT_FAMILY,
     TEXT_DONE,
     TEXT_MAIN,
+    get_font_family,
 )
 
 import os
@@ -140,7 +140,7 @@ class TaskCard(QWidget):
         self._draw_checkbox(painter, chk_rect, checked)
 
         # ── 文字 ──
-        font = QFont(FONT_FAMILY, self.font_size)
+        font = QFont(get_font_family(), self.font_size)
         if checked:
             font.setStrikeOut(True)
         painter.setFont(font)
@@ -150,7 +150,7 @@ class TaskCard(QWidget):
         # 日期宽度按字号精确计算（10字符 + 左右padding）
         fm = QFontMetrics(font)
         line_h = fm.lineSpacing() + 2
-        fm_dl = QFontMetrics(QFont(FONT_FAMILY, self.font_size - 2))
+        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12   # 12 = 左右各6px padding
         # 文字区域右边界 = card_right - dl_w - 4（即日期左边界 - 4px inset）
         text_right = self.width() - dl_w - 4
@@ -173,7 +173,7 @@ class TaskCard(QWidget):
         # ── 截止日期 ──
         dl = self.task.get("deadline", "")
         if dl:
-            painter.setFont(QFont(FONT_FAMILY, self.font_size - 2))
+            painter.setFont(QFont(get_font_family(), self.font_size - 2))
             painter.setPen(
                 self.deadline_color(dl, self.deadline_colors, self.deadline_thresholds)
             )

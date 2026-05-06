@@ -23,6 +23,7 @@ def default_data():
     """返回带有所有默认值的应用数据结构。"""
     return {
         "font_size": 13,
+        "font_family": "Microsoft YaHei",
         "geometry": None,
         "deadline_colors":    dict(DEADLINE_COLORS_DEFAULT),
         "deadline_thresholds": dict(DEADLINE_THRESHOLDS_DEFAULT),
@@ -53,6 +54,10 @@ def load_data():
             # 截止日期阈值（向后兼容旧数据）
             if "deadline_thresholds" not in d:
                 d["deadline_thresholds"] = dict(DEADLINE_THRESHOLDS_DEFAULT)
+
+            # 字体（向后兼容旧数据）
+            if "font_family" not in d:
+                d["font_family"] = "Microsoft YaHei"
 
             return d
         except Exception:

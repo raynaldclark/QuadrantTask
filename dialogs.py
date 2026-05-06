@@ -8,16 +8,16 @@ from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QFrame, QTextEdit, QLineEdit,
-    QPushButton, QSpinBox, QColorDialog,
+    QPushButton, QSpinBox, QColorDialog, QFontComboBox,
 )
 
 from constants import (
     BTN_PRIMARY_BG,
     BTN_PRIMARY_FG,
-    FONT_FAMILY,
     TEXT_MAIN,
     TEXT_SUB,
     QUADS,
+    get_font_family,
 )
 
 
@@ -31,7 +31,7 @@ def _build_title_bar(title: str, parent: QDialog) -> QFrame:
     lay.setContentsMargins(16, 0, 12, 0)
 
     lbl = QLabel(title, bar)
-    lbl.setFont(QFont(FONT_FAMILY, 15, QFont.Bold))
+    lbl.setFont(QFont(get_font_family(), 15, QFont.Bold))
     lbl.setStyleSheet("color:#FFFFFF; background:transparent; border:none;")
     lay.addWidget(lbl)
     lay.addStretch()
@@ -82,7 +82,7 @@ class AddTaskDialog(QDialog):
         b.addWidget(QLabel("任务内容 *"))
         self.text_edit = QTextEdit()
         self.text_edit.setPlaceholderText("输入任务描述...")
-        self.text_edit.setFont(QFont(FONT_FAMILY, self.fs))
+        self.text_edit.setFont(QFont(get_font_family(), self.fs))
         self.text_edit.setFixedHeight(72)
         self.text_edit.setStyleSheet(f"""
             QTextEdit {{ border: 1px solid #CBD5E1; border-radius: 6px;
@@ -109,7 +109,7 @@ class AddTaskDialog(QDialog):
         b.addWidget(QLabel("截止日期（可选）"))
         self.dl_edit = QLineEdit()
         self.dl_edit.setPlaceholderText("YYYY-MM-DD")
-        self.dl_edit.setFont(QFont(FONT_FAMILY, self.fs - 1))
+        self.dl_edit.setFont(QFont(get_font_family(), self.fs - 1))
         self.dl_edit.setStyleSheet(f"""
             QLineEdit {{ border: 1px solid #CBD5E1; border-radius: 6px;
                         padding: 8px 12px; font-size: {self.fs - 1}px; color: {TEXT_MAIN}; }}
@@ -125,7 +125,7 @@ class AddTaskDialog(QDialog):
 
     def _add_ok_cancel(self, parent_layout, btn_row, ok_text, ok_handler):
         cancel = QPushButton("取消")
-        cancel.setFont(QFont(FONT_FAMILY, self.fs))
+        cancel.setFont(QFont(get_font_family(), self.fs))
         cancel.setFixedSize(90, 36)
         cancel.setCursor(Qt.PointingHandCursor)
         cancel.setStyleSheet(f"""
@@ -137,7 +137,7 @@ class AddTaskDialog(QDialog):
         btn_row.addWidget(cancel)
 
         ok = QPushButton(ok_text)
-        ok.setFont(QFont(FONT_FAMILY, self.fs, QFont.Bold))
+        ok.setFont(QFont(get_font_family(), self.fs, QFont.Bold))
         ok.setFixedSize(90, 36)
         ok.setCursor(Qt.PointingHandCursor)
         ok.setStyleSheet(f"""
@@ -195,17 +195,17 @@ class AddTaskDialog(QDialog):
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         title_lbl = QLabel(cfg["title"])
-        title_lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        title_lbl.setFont(QFont(get_font_family(), 12, QFont.Bold))
         title_lbl.setStyleSheet(f"color:{cfg['header_fg']}; background:transparent; border:none;")
         text_col.addWidget(title_lbl)
         sub_lbl = QLabel(cfg["subtitle"])
-        sub_lbl.setFont(QFont(FONT_FAMILY, 10))
+        sub_lbl.setFont(QFont(get_font_family(), 10))
         sub_lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
         text_col.addWidget(sub_lbl)
         lay.addLayout(text_col)
         lay.addStretch()
         sel_lbl = QLabel("✓")
-        sel_lbl.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+        sel_lbl.setFont(QFont(get_font_family(), 16, QFont.Bold))
         sel_lbl.setStyleSheet("color:#3B82F6; background:transparent; border:none;")
         sel_lbl.setFixedWidth(24)
         sel_lbl.setVisible(False)
@@ -261,7 +261,7 @@ class EditTaskDialog(QDialog):
         b.addWidget(QLabel("任务内容 *"))
         self.text_edit = QTextEdit()
         self.text_edit.setPlaceholderText("输入任务描述...")
-        self.text_edit.setFont(QFont(FONT_FAMILY, self.fs))
+        self.text_edit.setFont(QFont(get_font_family(), self.fs))
         self.text_edit.setFixedHeight(72)
         self.text_edit.setStyleSheet(f"""
             QTextEdit {{ border: 1px solid #CBD5E1; border-radius: 6px;
@@ -289,7 +289,7 @@ class EditTaskDialog(QDialog):
         b.addWidget(QLabel("截止日期（可选）"))
         self.dl_edit = QLineEdit()
         self.dl_edit.setPlaceholderText("YYYY-MM-DD")
-        self.dl_edit.setFont(QFont(FONT_FAMILY, self.fs - 1))
+        self.dl_edit.setFont(QFont(get_font_family(), self.fs - 1))
         self.dl_edit.setStyleSheet(f"""
             QLineEdit {{ border: 1px solid #CBD5E1; border-radius: 6px;
                         padding: 8px 12px; font-size: {self.fs - 1}px; color: {TEXT_MAIN}; }}
@@ -305,7 +305,7 @@ class EditTaskDialog(QDialog):
 
     def _add_ok_cancel(self, parent_layout, btn_row, ok_text, ok_handler):
         cancel = QPushButton("取消")
-        cancel.setFont(QFont(FONT_FAMILY, self.fs))
+        cancel.setFont(QFont(get_font_family(), self.fs))
         cancel.setFixedSize(90, 36)
         cancel.setCursor(Qt.PointingHandCursor)
         cancel.setStyleSheet(f"""
@@ -317,7 +317,7 @@ class EditTaskDialog(QDialog):
         btn_row.addWidget(cancel)
 
         ok = QPushButton(ok_text)
-        ok.setFont(QFont(FONT_FAMILY, self.fs, QFont.Bold))
+        ok.setFont(QFont(get_font_family(), self.fs, QFont.Bold))
         ok.setFixedSize(90, 36)
         ok.setCursor(Qt.PointingHandCursor)
         ok.setStyleSheet(f"""
@@ -372,17 +372,17 @@ class EditTaskDialog(QDialog):
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         title_lbl = QLabel(cfg["title"])
-        title_lbl.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        title_lbl.setFont(QFont(get_font_family(), 12, QFont.Bold))
         title_lbl.setStyleSheet(f"color:{cfg['header_fg']}; background:transparent; border:none;")
         text_col.addWidget(title_lbl)
         sub_lbl = QLabel(cfg["subtitle"])
-        sub_lbl.setFont(QFont(FONT_FAMILY, 10))
+        sub_lbl.setFont(QFont(get_font_family(), 10))
         sub_lbl.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
         text_col.addWidget(sub_lbl)
         lay.addLayout(text_col)
         lay.addStretch()
         sel_lbl = QLabel("✓")
-        sel_lbl.setFont(QFont(FONT_FAMILY, 16, QFont.Bold))
+        sel_lbl.setFont(QFont(get_font_family(), 16, QFont.Bold))
         sel_lbl.setStyleSheet("color:#3B82F6; background:transparent; border:none;")
         sel_lbl.setFixedWidth(24)
         sel_lbl.setVisible(False)
@@ -419,10 +419,11 @@ class SettingsDialog(QDialog):
         self._thresholds = dict(
             data.get("deadline_thresholds", {"days3": 3, "days7": 7})
         )
+        self._font_family = data.get("font_family", "Microsoft YaHei")
 
         self.setWindowTitle("设置")
         self.setModal(True)
-        self.setFixedSize(440, 420)
+        self.setFixedSize(440, 500)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -433,9 +434,38 @@ class SettingsDialog(QDialog):
         b.setContentsMargins(20, 16, 20, 16)
         outer.addWidget(body)
 
-        # 小标题
+        # 字体设置
+        font_h = QLabel("字体")
+        font_h.setFont(QFont(get_font_family(), 13, QFont.Bold))
+        font_h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; margin-bottom: 8px;")
+        b.addWidget(font_h)
+
+        font_row = QHBoxLayout()
+        font_row.setSpacing(8)
+
+        font_lbl = QLabel("应用字体：")
+        font_lbl.setFont(QFont(get_font_family(), 11))
+        font_lbl.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
+        font_lbl.setFixedWidth(70)
+        font_row.addWidget(font_lbl)
+
+        self._font_combo = QFontComboBox()
+        self._font_combo.setFontFilters(QFontComboBox.FontFilters(0x1))
+        self._font_combo.setCurrentText(self._font_family)
+        self._font_combo.currentTextChanged.connect(self._on_font_changed)
+        self._font_combo.setStyleSheet(f"""
+            QFontComboBox {{ border: 1px solid #CBD5E1; border-radius: 4px;
+                           padding: 4px 8px; color: {TEXT_MAIN}; background: #FFFFFF; }}
+        """)
+        font_row.addWidget(self._font_combo)
+        font_row.addStretch()
+
+        b.addLayout(font_row)
+        b.addSpacing(8)
+
+        # 截止日期颜色与阈值规则
         h = QLabel("截止日期颜色与阈值规则")
-        h.setFont(QFont(FONT_FAMILY, 13, QFont.Bold))
+        h.setFont(QFont(get_font_family(), 13, QFont.Bold))
         h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; margin-bottom: 8px;")
         b.addWidget(h)
 
@@ -484,7 +514,7 @@ class SettingsDialog(QDialog):
         btn_row.addStretch()
 
         cancel = QPushButton("取消")
-        cancel.setFont(QFont(FONT_FAMILY, 11))
+        cancel.setFont(QFont(get_font_family(), 11))
         cancel.setFixedSize(90, 32)
         cancel.setCursor(Qt.PointingHandCursor)
         cancel.setStyleSheet(f"""
@@ -496,7 +526,7 @@ class SettingsDialog(QDialog):
         btn_row.addWidget(cancel)
 
         ok = QPushButton("确定")
-        ok.setFont(QFont(FONT_FAMILY, 11, QFont.Bold))
+        ok.setFont(QFont(get_font_family(), 11, QFont.Bold))
         ok.setFixedSize(90, 32)
         ok.setCursor(Qt.PointingHandCursor)
         ok.setStyleSheet(f"""
@@ -512,13 +542,13 @@ class SettingsDialog(QDialog):
 
     def _add_fixed_row_to_grid(self, grid, row, key, label_text, hint, color_key):
         col = QLabel(label_text)
-        col.setFont(QFont(FONT_FAMILY, 11))
+        col.setFont(QFont(get_font_family(), 11))
         col.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
         col.setFixedWidth(90)
         grid.addWidget(col, row, 0)
 
         hint_lbl = QLabel(hint)
-        hint_lbl.setFont(QFont(FONT_FAMILY, 10))
+        hint_lbl.setFont(QFont(get_font_family(), 10))
         hint_lbl.setStyleSheet("color:#94A3B8; background:transparent;")
         hint_lbl.setFixedWidth(70)
         grid.addWidget(hint_lbl, row, 1)
@@ -529,7 +559,7 @@ class SettingsDialog(QDialog):
 
     def _add_config_row_to_grid(self, grid, row, key, label_text, default_val):
         dyn_lbl = QLabel(label_text)
-        dyn_lbl.setFont(QFont(FONT_FAMILY, 11))
+        dyn_lbl.setFont(QFont(get_font_family(), 11))
         dyn_lbl.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
         dyn_lbl.setFixedWidth(90)
         self._label_widgets[key] = dyn_lbl
@@ -537,7 +567,7 @@ class SettingsDialog(QDialog):
 
         spin = QSpinBox()
         spin.setFixedSize(70, 26)
-        spin.setFont(QFont(FONT_FAMILY, 11))
+        spin.setFont(QFont(get_font_family(), 11))
         spin.setMinimum(1)
         spin.setMaximum(999)
         spin.setValue(self._thresholds.get(key, default_val))
@@ -552,7 +582,7 @@ class SettingsDialog(QDialog):
         self._spin_widgets[key] = spin
 
         suffix = QLabel("天")
-        suffix.setFont(QFont(FONT_FAMILY, 11))
+        suffix.setFont(QFont(get_font_family(), 11))
         suffix.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
 
         # spin + 后缀放在一个子 HBox 中，再整体加入 grid 第 1 列
@@ -606,3 +636,9 @@ class SettingsDialog(QDialog):
 
     def get_thresholds(self) -> dict:
         return {key: spin.value() for key, spin in self._spin_widgets.items()}
+
+    def get_font_family(self) -> str:
+        return self._font_combo.currentText()
+
+    def _on_font_changed(self, font_family):
+        self._font_family = font_family

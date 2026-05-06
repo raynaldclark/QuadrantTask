@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWidgets import QScrollArea
 
-from constants import FONT_FAMILY
+from constants import get_font_family
 from task_card import TaskCard
 
 
@@ -127,7 +127,7 @@ class QuadrantPanel(QFrame):
 
         title_row = QHBoxLayout()
         title_label = QLabel(self.cfg["title"])
-        title_label.setFont(QFont(FONT_FAMILY, 14, QFont.Bold))
+        title_label.setFont(QFont(get_font_family(), 14, QFont.Bold))
         title_label.setStyleSheet(
             f"color:{self.cfg['header_fg']}; background:transparent; border:none;"
         )
