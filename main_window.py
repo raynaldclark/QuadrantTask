@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """MainWindow：主窗口与工具栏"""
 
+import os
+import sys
+
 from PySide6.QtCore import QByteArray, Qt
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
@@ -42,12 +45,13 @@ class MainWindow(QMainWindow):
         else:
             self.resize(1280, 820)
 
+        self.show_done_cb = QCheckBox()
+        self.show_done_cb.setChecked(self.data.get("show_done", True))
+        self.show_done_cb.stateChanged.connect(self._toggle_show_done)
         self._build_toolbar()
         self._build_board()
 
     def _set_window_icon(self):
-        import os
-        import sys
         if getattr(sys, 'frozen', False):
             _BASE_DIR = sys._MEIPASS
         else:
@@ -61,6 +65,22 @@ class MainWindow(QMainWindow):
             renderer.render(painter)
             painter.end()
             self.setWindowIcon(QIcon(pixmap))
+
+    def _svg_icon(self, filename, size=20):
+        if getattr(sys, 'frozen', False):
+            _BASE_DIR = sys._MEIPASS
+        else:
+            _BASE_DIR = os.path.dirname(__file__)
+        path = os.path.join(_BASE_DIR, "source", filename)
+        if os.path.exists(path):
+            renderer = QSvgRenderer(path)
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+            return QIcon(pixmap)
+        return QIcon()
 
     # ─── 公开 API ──────────────────────────────────────────────────────────────
 
@@ -100,43 +120,70 @@ class MainWindow(QMainWindow):
         t.addSpacing(16)
 
         # 显示已完成
-        self.show_done_cb = QCheckBox("显示已完成")
-        self.show_done_cb.setFont(QFont(FONT_FAMILY, 11))
-        self.show_done_cb.setCursor(Qt.PointingHandCursor)
-        self.show_done_cb.setStyleSheet(f"""
-            QCheckBox {{ color: {TEXT_MAIN}; spacing: 4px; }}
-            QCheckBox::indicator {{ width: 16px; height: 16px; }}
+        show_done_btn = QPushButton()
+        show_done_btn.setIcon(self._svg_icon("显示已完成.svg", 20))
+        show_done_btn.setToolTip("显示已完成")
+        show_done_btn.setFixedSize(36, 28)
+        show_done_btn.setCursor(Qt.PointingHandCursor)
+        show_done_btn.setStyleSheet(f"""
+            QPushButton {{ background: transparent; border: none; border-radius: 4px; }}
+            QPushButton:hover {{ background: #F1F5F9; }}
         """)
-        self.show_done_cb.stateChanged.connect(self._toggle_show_done)
-        t.addWidget(self.show_done_cb)
+        show_done_btn.clicked.connect(lambda: self.show_done_cb.toggle())
+        t.addWidget(show_done_btn)
 
         t.addSpacing(8)
 
         # 设置按钮
-        settings_btn = self._toolbar_btn("设置")
+        settings_btn = QPushButton()
+        settings_btn.setIcon(self._svg_icon("设置.svg", 20))
+        settings_btn.setToolTip("设置")
+        settings_btn.setFixedSize(36, 28)
+        settings_btn.setCursor(Qt.PointingHandCursor)
+        settings_btn.setStyleSheet("""
+            QPushButton { background: transparent; border: none; border-radius: 4px; }
+            QPushButton:hover { background: #F1F5F9; }
+        """)
         settings_btn.clicked.connect(self._show_settings)
         t.addWidget(settings_btn)
 
         t.addSpacing(8)
 
         # 清空按钮
-        clear_done_btn = self._toolbar_btn("清空已完成", danger=True)
+        clear_done_btn = QPushButton()
+        clear_done_btn.setIcon(self._svg_icon("删除已完成.svg", 20))
+        clear_done_btn.setToolTip("清空已完成")
+        clear_done_btn.setFixedSize(36, 28)
+        clear_done_btn.setCursor(Qt.PointingHandCursor)
+        clear_done_btn.setStyleSheet("""
+            QPushButton { background: transparent; border: none; border-radius: 4px; }
+            QPushButton:hover { background: #F1F5F9; }
+        """)
         clear_done_btn.clicked.connect(self._clear_done)
         t.addWidget(clear_done_btn)
 
-        clear_all_btn = self._toolbar_btn("清空全部", danger=True)
+        clear_all_btn = QPushButton()
+        clear_all_btn.setIcon(self._svg_icon("删除所有.svg", 20))
+        clear_all_btn.setToolTip("清空全部")
+        clear_all_btn.setFixedSize(36, 28)
+        clear_all_btn.setCursor(Qt.PointingHandCursor)
+        clear_all_btn.setStyleSheet("""
+            QPushButton { background: transparent; border: none; border-radius: 4px; }
+            QPushButton:hover { background: #F1F5F9; }
+        """)
         clear_all_btn.clicked.connect(self._clear_all)
         t.addWidget(clear_all_btn)
 
         t.addSpacing(16)
 
         # 添加按钮
-        add_btn = QPushButton("＋  添加任务")
-        add_btn.setFont(QFont(FONT_FAMILY, 12, QFont.Bold))
+        add_btn = QPushButton()
+        add_btn.setIcon(self._svg_icon("添加.svg", 22))
+        add_btn.setToolTip("添加任务")
+        add_btn.setFixedSize(36, 28)
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setStyleSheet(f"""
-            QPushButton {{ background: {BTN_PRIMARY_BG}; color: {BTN_PRIMARY_FG};
-                          border: none; border-radius: 6px; padding: 7px 16px; }}
+            QPushButton {{ background: {BTN_PRIMARY_BG}; border: none; border-radius: 4px; }}
             QPushButton:hover {{ background: #334155; }}
         """)
         add_btn.clicked.connect(self._show_add_dialog)
