@@ -74,13 +74,18 @@ class MainWindow(QMainWindow):
         path = os.path.join(_BASE_DIR, "source", filename)
         if os.path.exists(path):
             renderer = QSvgRenderer(path)
-            pixmap = QPixmap(size, size)
-            pixmap.fill(Qt.transparent)
             if renderer.isValid():
+                vb = renderer.viewBox()
+                native_w = vb.width()
+                native_h = vb.height()
+                native_size = max(native_w, native_h)
+                pixmap = QPixmap(int(native_w), int(native_h))
+                pixmap.fill(Qt.transparent)
                 painter = QPainter(pixmap)
                 renderer.render(painter)
                 painter.end()
-            return QIcon(pixmap)
+                scaled = pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                return QIcon(scaled)
         return QIcon()
 
     # ─── 公开 API ──────────────────────────────────────────────────────────────
