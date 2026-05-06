@@ -121,9 +121,9 @@ class MainWindow(QMainWindow):
 
         # 显示已完成
         show_done_btn = QPushButton()
-        show_done_btn.setIcon(self._svg_icon("fin.svg", 20))
+        show_done_btn.setIcon(self._svg_icon("fin.svg", 28))
         show_done_btn.setToolTip("显示已完成")
-        show_done_btn.setFixedSize(36, 28)
+        show_done_btn.setFixedSize(40, 36)
         show_done_btn.setCursor(Qt.PointingHandCursor)
         show_done_btn.setStyleSheet(f"""
             QPushButton {{ background: transparent; border: none; border-radius: 4px; }}
@@ -136,9 +136,9 @@ class MainWindow(QMainWindow):
 
         # 设置按钮
         settings_btn = QPushButton()
-        settings_btn.setIcon(self._svg_icon("setting.svg", 20))
+        settings_btn.setIcon(self._svg_icon("setting.svg", 28))
         settings_btn.setToolTip("设置")
-        settings_btn.setFixedSize(36, 28)
+        settings_btn.setFixedSize(40, 36)
         settings_btn.setCursor(Qt.PointingHandCursor)
         settings_btn.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 4px; }
@@ -151,9 +151,9 @@ class MainWindow(QMainWindow):
 
         # 清空按钮
         clear_done_btn = QPushButton()
-        clear_done_btn.setIcon(self._svg_icon("delfin.svg", 20))
+        clear_done_btn.setIcon(self._svg_icon("delfin.svg", 28))
         clear_done_btn.setToolTip("清空已完成")
-        clear_done_btn.setFixedSize(36, 28)
+        clear_done_btn.setFixedSize(40, 36)
         clear_done_btn.setCursor(Qt.PointingHandCursor)
         clear_done_btn.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 4px; }
@@ -163,9 +163,9 @@ class MainWindow(QMainWindow):
         t.addWidget(clear_done_btn)
 
         clear_all_btn = QPushButton()
-        clear_all_btn.setIcon(self._svg_icon("delall.svg", 20))
+        clear_all_btn.setIcon(self._svg_icon("delall.svg", 28))
         clear_all_btn.setToolTip("清空全部")
-        clear_all_btn.setFixedSize(36, 28)
+        clear_all_btn.setFixedSize(40, 36)
         clear_all_btn.setCursor(Qt.PointingHandCursor)
         clear_all_btn.setStyleSheet("""
             QPushButton { background: transparent; border: none; border-radius: 4px; }
@@ -178,9 +178,9 @@ class MainWindow(QMainWindow):
 
         # 添加按钮
         add_btn = QPushButton()
-        add_btn.setIcon(self._svg_icon("add.svg", 22))
+        add_btn.setIcon(self._svg_icon("add.svg", 28))
         add_btn.setToolTip("添加任务")
-        add_btn.setFixedSize(36, 28)
+        add_btn.setFixedSize(40, 36)
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setStyleSheet(f"""
             QPushButton {{ background: {BTN_PRIMARY_BG}; border: none; border-radius: 4px; }}
