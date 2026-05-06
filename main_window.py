@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.data = load_data()
         self._drag_target_key = None
+        self._undo_stack = []
 
         self.setWindowTitle("四象限任务板")
         self._set_window_icon()
@@ -60,6 +61,18 @@ class MainWindow(QMainWindow):
         for p in self.panels.values():
             p.show_done = show
             p.render_tasks()
+
+    def _undo(self):
+        if not self._undo_stack:
+            return
+        action = self._undo_stack.pop()
+        if action["type"] == "delete":
+            q_key = action["q_key"]
+            task = action["task"]
+            self.data["tasks"][q_key].append(task)
+            self.panels[q_key].render_tasks()
+            self.panels[q_key]._update_count()
+            self.save()
 
     def _set_window_icon(self):
         if getattr(sys, 'frozen', False):
@@ -132,6 +145,11 @@ class MainWindow(QMainWindow):
 
         # 字号 A− / A＋（无文字标签）
         t.addLayout(self._build_font_controls())
+
+        t.addSpacing(10)
+
+        # 撤销按钮
+        self._undo_wrapper = self._toolbar_icon_btn("undo.svg", "撤销", self._undo)
 
         t.addSpacing(10)
 

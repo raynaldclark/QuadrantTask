@@ -74,11 +74,15 @@ class QuadrantPanel(QFrame):
         self.render_tasks()
 
     def _on_delete(self, task_id):
-        self.data["tasks"][self.q_key] = [
-            t for t in self.data["tasks"][self.q_key] if t["id"] != task_id
-        ]
-        self.app.save()
-        self.render_tasks()
+        task = next((t for t in self.data["tasks"][self.q_key] if t["id"] == task_id), None)
+        if task:
+            self.data["tasks"][self.q_key] = [
+                t for t in self.data["tasks"][self.q_key] if t["id"] != task_id
+            ]
+            self.app._undo_stack.append({"type": "delete", "q_key": self.q_key, "task": task})
+            self.app.save()
+            self.render_tasks()
+            self._update_count()
 
     def _on_edit(self, task):
         self.app._show_edit_dialog(task, self.q_key)
