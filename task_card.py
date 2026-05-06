@@ -3,7 +3,7 @@
 
 from datetime import datetime, date
 
-from PySide6.QtCore import Qt, QPoint, QRect, QTimer
+from PySide6.QtCore import Qt, QPoint, QRect, QTimer, QSize
 from PySide6.QtGui import QPainter, QPixmap, QColor, QPen, QFont, QCursor, QDrag, QFontMetrics, QIcon
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QWidget, QApplication, QSizePolicy
@@ -60,12 +60,11 @@ class TaskCard(QWidget):
         self._target_quad = None          # 拖拽悬停目标象限
         self._show_actions = False        # hover 动作条
         self._action_hover_del = False
-        self._painting = False
 
         self.setCursor(QCursor(Qt.OpenHandCursor))
         self.setAttribute(Qt.WA_Hover, True)
         self.setMinimumWidth(195)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         # 300ms 延迟显示动作条
         self._action_timer = QTimer(self)
@@ -155,19 +154,15 @@ class TaskCard(QWidget):
         # 文字区域右边界 = card_right - dl_w - 4（即日期左边界 - 4px inset）
         text_right = self.width() - dl_w - 4
         text_w = text_right - chk_rect.right() - 4
+        if text_w < 20:
+            text_w = 20
         # 使用 boundingRect 获取 Qt 实际换行后的精确高度
         br_rect = QRect(0, 0, text_w, 1677216)
         br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
         card_h = max(40, br.height() + 10)
 
-        # 只有不在重绘中且高度差异大于1px时才更新高度
-        if not self._painting and abs(self.height() - card_h) > 1:
-            self._painting = True
-            self.setFixedHeight(card_h)
-            self._painting = False
-
-        # 文字区域（使用实际卡片高度以保持垂直居中）
-        text_rect = QRect(chk_rect.right() + 4, 0, text_w, max(card_h, self.height()))
+        # 文字区域
+        text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
         painter.drawText(
             text_rect.adjusted(4, 0, 0, 0),
             Qt.AlignVCenter | Qt.TextWordWrap,
@@ -334,13 +329,32 @@ class TaskCard(QWidget):
 
     def sizeHint(self):
         w = max(self.width(), 200)
+        if w < 200:
+            w = 200
         font = QFont(get_font_family(), self.font_size)
         fm = QFontMetrics(font)
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
         chk_right = 40
         text_w = w - dl_w - chk_right - 8
+        if text_w < 20:
+            text_w = 20
         br_rect = QRect(0, 0, text_w, 1677216)
         br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
         h = max(40, br.height() + 10)
         return QSize(w, h)
+
+    def heightForWidth(self, width=None):
+        if width is None:
+            width = self.width()
+        font = QFont(get_font_family(), self.font_size)
+        fm = QFontMetrics(font)
+        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
+        dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
+        chk_right = 40
+        text_w = width - dl_w - chk_right - 8
+        if text_w < 20:
+            text_w = 20
+        br_rect = QRect(0, 0, text_w, 1677216)
+        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
+        return max(40, br.height() + 10)

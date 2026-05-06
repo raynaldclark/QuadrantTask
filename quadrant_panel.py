@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """QuadrantPanel：可接受拖拽的象限面板"""
 
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt, QEvent, QTimer
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
@@ -50,10 +50,24 @@ class QuadrantPanel(QFrame):
                 on_delete=self._on_delete,
                 on_edit=self._on_edit,
             )
-            self.task_layout.insertWidget(self.task_layout.count() - 1, card)
             card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            self.task_layout.insertWidget(self.task_layout.count() - 1, card)
 
         self._update_count()
+        QTimer.singleShot(0, self._update_card_widths)
+
+    def _update_card_widths(self):
+        scroll_width = self.scroll.viewport().width()
+        if scroll_width > 50:
+            new_width = scroll_width - 12
+            for i in range(self.task_layout.count() - 1):
+                item = self.task_layout.itemAt(i)
+                if item.widget() and isinstance(item.widget(), TaskCard):
+                    w = item.widget()
+                    w.setFixedSize(new_width, w.heightForWidth(new_width))
+            self.task_layout.activate()
+            self.task_container.updateGeometry()
+            self.scroll.viewport().update()
 
     def clear_done(self):
         self.data["tasks"][self.q_key] = [
@@ -165,6 +179,7 @@ class QuadrantPanel(QFrame):
 
         self.scroll.setWidget(self.task_container)
         self.scroll.viewport().installEventFilter(self)
+        self._viewport_size = self.scroll.viewport().size()
         parent_layout.addWidget(self.scroll)
 
     def _apply_style(self):
@@ -179,6 +194,9 @@ class QuadrantPanel(QFrame):
         if obj is self.scroll.viewport() and event.type() == QEvent.Type.MouseButtonDblClick:
             self.app._show_add_dialog(self.cfg["title"])
             return True
+        if obj is self.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            QTimer.singleShot(0, self._update_card_widths)
+            return False
         return super().eventFilter(obj, event)
 
     def dragEnterEvent(self, event):
