@@ -60,11 +60,12 @@ class TaskCard(QWidget):
         self._target_quad = None          # 拖拽悬停目标象限
         self._show_actions = False        # hover 动作条
         self._action_hover_del = False
+        self._painting = False
 
         self.setCursor(QCursor(Qt.OpenHandCursor))
         self.setAttribute(Qt.WA_Hover, True)
         self.setMinimumWidth(195)
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.HeightForWidth)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.MinimumExpanding)
 
         # 300ms 延迟显示动作条
         self._action_timer = QTimer(self)
@@ -159,8 +160,14 @@ class TaskCard(QWidget):
         br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
         card_h = max(40, br.height() + 10)
 
-        # 文字区域
-        text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
+        # 只有不在重绘中且高度差异大于1px时才更新高度
+        if not self._painting and abs(self.height() - card_h) > 1:
+            self._painting = True
+            self.setFixedHeight(card_h)
+            self._painting = False
+
+        # 文字区域（使用实际卡片高度以保持垂直居中）
+        text_rect = QRect(chk_rect.right() + 4, 0, text_w, max(card_h, self.height()))
         painter.drawText(
             text_rect.adjusted(4, 0, 0, 0),
             Qt.AlignVCenter | Qt.TextWordWrap,
@@ -337,14 +344,3 @@ class TaskCard(QWidget):
         br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
         h = max(40, br.height() + 10)
         return QSize(w, h)
-
-    def heightForWidth(self):
-        font = QFont(get_font_family(), self.font_size)
-        fm = QFontMetrics(font)
-        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
-        dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
-        chk_right = 40
-        text_w = self.width() - dl_w - chk_right - 8
-        br_rect = QRect(0, 0, text_w, 1677216)
-        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
-        return max(40, br.height() + 10)
