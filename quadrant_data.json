@@ -1,6 +1,6 @@
 {
   "font_size": 15,
-  "geometry": "AdnQywADAAAAAAMHAAAB6gAABnEAAATBAAADBwAAAgkAAAZxAAAEwQAAAAAAAAAACgAAAAMHAAACCQAABnEAAATB",
+  "geometry": "AdnQywADAAAAAAXDAAAB4QAACOIAAAS4AAAFwwAAAgAAAAjiAAAEuAAAAAAAAAAACgAAAAXDAAACAAAACOIAAAS4",
   "deadline_colors": {
     "overdue": "#EF4444",
     "today": "#F97316",
@@ -32,7 +32,7 @@
       {
         "id": "2ca45eef-783d-4508-b439-b4437d0bfc0a",
         "text": "团队培训方案制定",
-        "done": false,
+        "done": true,
         "deadline": "2026-6-15"
       },
       {
@@ -70,5 +70,6 @@
         "deadline": "2026-8-31"
       }
     ]
-  }
+  },
+  "show_done": true
 }
