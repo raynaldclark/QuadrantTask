@@ -76,9 +76,7 @@ class MainWindow(QMainWindow):
             renderer = QSvgRenderer(path)
             pixmap = QPixmap(size, size)
             pixmap.fill(Qt.transparent)
-            painter = QPainter(pixmap)
             if renderer.isValid():
-                r = renderer.viewBoxOnViewport()
                 viewBox = renderer.viewBox()
                 if not viewBox.isNull():
                     sx = size / viewBox.width()
@@ -86,12 +84,15 @@ class MainWindow(QMainWindow):
                     s = max(sx, sy)
                     tx = (size - viewBox.width() * s) / 2
                     ty = (size - viewBox.height() * s) / 2
+                    painter = QPainter(pixmap)
                     painter.translate(tx, ty)
                     painter.scale(s, s)
                     renderer.render(painter)
+                    painter.end()
                 else:
+                    painter = QPainter(pixmap)
                     renderer.render(painter)
-            painter.end()
+                    painter.end()
             return QIcon(pixmap)
         return QIcon()
 
