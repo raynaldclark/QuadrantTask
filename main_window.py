@@ -77,7 +77,20 @@ class MainWindow(QMainWindow):
             pixmap = QPixmap(size, size)
             pixmap.fill(Qt.transparent)
             painter = QPainter(pixmap)
-            renderer.render(painter)
+            if renderer.isValid():
+                r = renderer.viewBoxOnViewport()
+                viewBox = renderer.viewBox()
+                if not viewBox.isNull():
+                    sx = size / viewBox.width()
+                    sy = size / viewBox.height()
+                    s = max(sx, sy)
+                    tx = (size - viewBox.width() * s) / 2
+                    ty = (size - viewBox.height() * s) / 2
+                    painter.translate(tx, ty)
+                    painter.scale(s, s)
+                    renderer.render(painter)
+                else:
+                    renderer.render(painter)
             painter.end()
             return QIcon(pixmap)
         return QIcon()
@@ -183,8 +196,8 @@ class MainWindow(QMainWindow):
         add_btn.setFixedSize(60, 60)
         add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setStyleSheet(f"""
-            QPushButton {{ background: {BTN_PRIMARY_BG}; border: none; border-radius: 4px; }}
-            QPushButton:hover {{ background: #334155; }}
+            QPushButton {{ background: transparent; border: none; border-radius: 4px; }}
+            QPushButton:hover {{ background: #F1F5F9; }}
         """)
         add_btn.clicked.connect(self._show_add_dialog)
         t.addWidget(add_btn)
