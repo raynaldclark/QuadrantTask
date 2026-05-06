@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("四象限任务板")
         self._set_window_icon()
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(640, 600)
         self.setStyleSheet(f"background:{BG_PAGE};")
 
         geo = self.data.get("geometry")
