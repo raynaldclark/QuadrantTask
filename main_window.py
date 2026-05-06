@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         self._build_board()
         self._apply_show_done_state()
         self._update_show_done_icon()
+        self._update_undo_icon()  # 移到这里，在 _build_toolbar 之后
 
     def _apply_show_done_state(self):
         show = self.show_done_cb.isChecked()
@@ -66,13 +67,77 @@ class MainWindow(QMainWindow):
         if not self._undo_stack:
             return
         action = self._undo_stack.pop()
-        if action["type"] == "delete":
+        action_type = action["type"]
+
+        if action_type == "delete":
             q_key = action["q_key"]
             task = action["task"]
             self.data["tasks"][q_key].append(task)
             self.panels[q_key].render_tasks()
             self.panels[q_key]._update_count()
             self.save()
+
+        elif action_type == "toggle":
+            q_key = action["q_key"]
+            task_id = action["task_id"]
+            task = next((t for t in self.data["tasks"][q_key] if t["id"] == task_id), None)
+            if task:
+                task["done"] = action["old_state"]
+                self.panels[q_key].render_tasks()
+                self.panels[q_key]._update_count()
+                self.save()
+
+        elif action_type == "edit":
+            q_key = action["q_key"]
+            task_id = action["task_id"]
+            task = next((t for t in self.data["tasks"][q_key] if t["id"] == task_id), None)
+            if task:
+                task["text"] = action["old_text"]
+                task["deadline"] = action["old_deadline"]
+                self.panels[q_key].render_tasks()
+                self.save()
+
+        elif action_type == "clear_done":
+            q_key = action["q_key"]
+            self.data["tasks"][q_key].extend(action["tasks"])
+            self.panels[q_key].render_tasks()
+            self.panels[q_key]._update_count()
+            self.save()
+
+        elif action_type == "clear_all":
+            for q_key, tasks in action["tasks"].items():
+                self.data["tasks"][q_key].extend(tasks)
+            for q_key in action["tasks"].keys():
+                self.panels[q_key].render_tasks()
+                self.panels[q_key]._update_count()
+            self.save()
+
+        elif action_type == "move":
+            task = action["task"]
+            from_q_key = action["from_q_key"]
+            to_q_key = action["to_q_key"]
+            self.data["tasks"][to_q_key] = [t for t in self.data["tasks"][to_q_key] if t["id"] != task["id"]]
+            self.data["tasks"][from_q_key].append(task)
+            self.panels[from_q_key].render_tasks()
+            self.panels[from_q_key]._update_count()
+            self.panels[to_q_key].render_tasks()
+            self.panels[to_q_key]._update_count()
+            self.save()
+
+        elif action_type == "add":
+            q_key = action["q_key"]
+            task_id = action["task_id"]
+            self.data["tasks"][q_key] = [t for t in self.data["tasks"][q_key] if t["id"] != task_id]
+            self.panels[q_key].render_tasks()
+            self.panels[q_key]._update_count()
+            self.save()
+
+        self._update_undo_icon()
+
+    def _update_undo_icon(self):
+        has_undo = len(self._undo_stack) > 0
+        icon_file = "undo.svg" if has_undo else "undo2.svg"
+        self._undo_wrapper._btn.setIcon(self._svg_icon(icon_file, 36))
 
     def _set_window_icon(self):
         if getattr(sys, 'frozen', False):
@@ -151,8 +216,6 @@ class MainWindow(QMainWindow):
         # 撤销按钮
         self._undo_wrapper = self._toolbar_icon_btn("undo.svg", "撤销", self._undo)
         t.addWidget(self._undo_wrapper)
-
-        t.addSpacing(10)
 
         # 显示已完成（切换图标）
         self._show_done_wrapper = self._toggle_icon_btn(
@@ -243,6 +306,7 @@ class MainWindow(QMainWindow):
         lbl.setFixedHeight(14)
         vbox.addWidget(lbl)
         wrapper.setFixedSize(60, 62)
+        wrapper._btn = btn
         return wrapper
 
     def _build_font_controls(self):
@@ -341,18 +405,35 @@ class MainWindow(QMainWindow):
         if q_key not in self.data["tasks"]:
             self.data["tasks"][q_key] = []
         self.data["tasks"][q_key].append(task)
+        self._undo_stack.append({
+            "type": "add",
+            "q_key": q_key,
+            "task_id": task["id"]
+        })
+        self._update_undo_icon()
         self.save()
         self.panels[q_key].render_tasks()
 
     def _show_edit_dialog(self, task, q_key):
         quad_titles = [q["title"] for q in QUADS]
         quad_keys = [q["key"] for q in QUADS]
+        old_text = task["text"]
+        old_deadline = task.get("deadline", "")
         dialog = EditTaskDialog(task, quad_keys, quad_titles, q_key,
                                 self.data["font_size"], self)
         if dialog.exec() == EditTaskDialog.Accepted:
             result = dialog.get_result()
             if result:
                 new_text, new_dl, new_q_key = result
+                if new_text != old_text or new_dl != old_deadline or new_q_key != q_key:
+                    self._undo_stack.append({
+                        "type": "edit",
+                        "q_key": q_key,
+                        "task_id": task["id"],
+                        "old_text": old_text,
+                        "old_deadline": old_deadline
+                    })
+                    self._update_undo_icon()
                 task["text"] = new_text
                 task["deadline"] = new_dl
                 if new_q_key != q_key:
@@ -377,6 +458,13 @@ class MainWindow(QMainWindow):
         if not task_data:
             return
 
+        self._undo_stack.append({
+            "type": "move",
+            "task": task_data,
+            "from_q_key": src_key,
+            "to_q_key": tgt_key
+        })
+        self._update_undo_icon()
         self.data["tasks"][src_key] = [t for t in src_tasks if t["id"] != task_id]
         if tgt_key not in self.data["tasks"]:
             self.data["tasks"][tgt_key] = []
@@ -407,7 +495,15 @@ class MainWindow(QMainWindow):
 
     def _clear_done(self):
         for p in self.panels.values():
+            done_tasks = [t for t in self.data["tasks"][p.q_key] if t.get("done")]
+            if done_tasks:
+                self._undo_stack.append({
+                    "type": "clear_done",
+                    "q_key": p.q_key,
+                    "tasks": done_tasks
+                })
             p.clear_done()
+        self._update_undo_icon()
 
     def _clear_all(self):
         from PySide6.QtWidgets import QMessageBox
@@ -418,6 +514,16 @@ class MainWindow(QMainWindow):
             QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
+            all_tasks = {}
+            for p in self.panels.values():
+                if self.data["tasks"][p.q_key]:
+                    all_tasks[p.q_key] = list(self.data["tasks"][p.q_key])
+            if all_tasks:
+                self._undo_stack.append({
+                    "type": "clear_all",
+                    "tasks": all_tasks
+                })
+                self._update_undo_icon()
             for p in self.panels.values():
                 p.clear_all()
 

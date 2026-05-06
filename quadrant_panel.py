@@ -70,6 +70,13 @@ class QuadrantPanel(QFrame):
     # ─── 内部事件处理器 ────────────────────────────────────────────────────────
 
     def _on_toggle(self, task):
+        self.app._undo_stack.append({
+            "type": "toggle",
+            "q_key": self.q_key,
+            "task_id": task["id"],
+            "old_state": not task.get("done", False)
+        })
+        self.app._update_undo_icon()
         self.app.save()
         self.render_tasks()
 
@@ -80,6 +87,7 @@ class QuadrantPanel(QFrame):
                 t for t in self.data["tasks"][self.q_key] if t["id"] != task_id
             ]
             self.app._undo_stack.append({"type": "delete", "q_key": self.q_key, "task": task})
+            self.app._update_undo_icon()
             self.app.save()
             self.render_tasks()
             self._update_count()
