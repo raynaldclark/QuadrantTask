@@ -150,6 +150,7 @@ class MainWindow(QMainWindow):
 
         # 撤销按钮
         self._undo_wrapper = self._toolbar_icon_btn("undo.svg", "撤销", self._undo)
+        t.addWidget(self._undo_wrapper)
 
         t.addSpacing(10)
 
