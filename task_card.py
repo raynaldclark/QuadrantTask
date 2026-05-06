@@ -6,7 +6,7 @@ from datetime import datetime, date
 from PySide6.QtCore import Qt, QPoint, QRect, QTimer
 from PySide6.QtGui import QPainter, QPixmap, QColor, QPen, QFont, QCursor, QDrag, QFontMetrics, QIcon
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import QWidget, QApplication
+from PySide6.QtWidgets import QWidget, QApplication, QSizePolicy
 
 from constants import (
     CARD_BG,
@@ -63,8 +63,8 @@ class TaskCard(QWidget):
 
         self.setCursor(QCursor(Qt.OpenHandCursor))
         self.setAttribute(Qt.WA_Hover, True)
-        # 最小宽度：保证日期（70px）+ 文字（65px）+ 复选框区域（44px）+ 左右 padding（16px）≈ 195px
         self.setMinimumWidth(195)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.HeightForWidth)
 
         # 300ms 延迟显示动作条
         self._action_timer = QTimer(self)
@@ -158,8 +158,6 @@ class TaskCard(QWidget):
         br_rect = QRect(0, 0, text_w, 1677216)
         br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
         card_h = max(40, br.height() + 10)
-        if abs(self.height() - card_h) > 1:
-            self.setFixedHeight(card_h)
 
         # 文字区域
         text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
@@ -328,9 +326,25 @@ class TaskCard(QWidget):
         self.updateGeometry()
 
     def sizeHint(self):
-        # 计算文字所需高度：字号 + 两端 padding + 间距
-        font_h = self.font_size + 4           # 每行高度
-        line_h = font_h + 2                  # 行间距（word wrap 空间）
-        lines  = self.task.get("text", "").count("\n") + 1
-        base_h = max(40, line_h * lines + 8)  # 最小 40px
-        return QRect(0, 0, 400, base_h).size()
+        w = max(self.width(), 200)
+        font = QFont(get_font_family(), self.font_size)
+        fm = QFontMetrics(font)
+        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
+        dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
+        chk_right = 40
+        text_w = w - dl_w - chk_right - 8
+        br_rect = QRect(0, 0, text_w, 1677216)
+        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
+        h = max(40, br.height() + 10)
+        return QSize(w, h)
+
+    def heightForWidth(self):
+        font = QFont(get_font_family(), self.font_size)
+        fm = QFontMetrics(font)
+        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
+        dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
+        chk_right = 40
+        text_w = self.width() - dl_w - chk_right - 8
+        br_rect = QRect(0, 0, text_w, 1677216)
+        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
+        return max(40, br.height() + 10)
