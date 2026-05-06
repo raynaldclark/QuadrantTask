@@ -77,22 +77,9 @@ class MainWindow(QMainWindow):
             pixmap = QPixmap(size, size)
             pixmap.fill(Qt.transparent)
             if renderer.isValid():
-                viewBox = renderer.viewBox()
-                if not viewBox.isNull():
-                    sx = size / viewBox.width()
-                    sy = size / viewBox.height()
-                    s = max(sx, sy)
-                    tx = (size - viewBox.width() * s) / 2
-                    ty = (size - viewBox.height() * s) / 2
-                    painter = QPainter(pixmap)
-                    painter.translate(tx, ty)
-                    painter.scale(s, s)
-                    renderer.render(painter)
-                    painter.end()
-                else:
-                    painter = QPainter(pixmap)
-                    renderer.render(painter)
-                    painter.end()
+                painter = QPainter(pixmap)
+                renderer.render(painter)
+                painter.end()
             return QIcon(pixmap)
         return QIcon()
 
