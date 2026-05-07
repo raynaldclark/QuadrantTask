@@ -5,7 +5,7 @@ import os
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtCore import QByteArray, QRect, QSize, Qt, Slot
+from PySide6.QtCore import QByteArray, QFileSystemWatcher, QRect, QSize, Qt, Slot, QTimer
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -22,7 +22,7 @@ from constants import (
     get_font_family,
     set_font_family as _set_font_family,
 )
-from data import load_data, save_data
+from data import load_data, save_data, DATA_FILE
 from dialogs import AddTaskDialog, EditTaskDialog, SettingsDialog
 from quadrant_panel import QuadrantPanel
 
@@ -74,10 +74,18 @@ class MainWindow(QMainWindow):
         self._apply_show_done_state()
         self._update_show_done_icon()
         self._update_undo_icon()
+
+        self._file_watcher = QFileSystemWatcher()
+        self._file_watcher.addPath(DATA_FILE)
+        self._file_watcher.fileChanged.connect(self._on_data_file_changed)
+        self._watcher_enabled = True
+        self._watcher_ignore_next = False
+
         self._is_initializing = False
 
     def save(self) -> None:
         """保存数据到磁盘"""
+        self._watcher_ignore_next = True
         save_data(self.data)
 
     # ─── 撤销系统（公开接口，供 QuadrantPanel 调用）───────────────────────────
@@ -715,14 +723,54 @@ class MainWindow(QMainWindow):
                 cur = child.font()
                 size = cur.pointSize()
                 if size > 0:
-                    child.setFont(QFont(get_font_family(), size, cur.weight(), cur.italic()))
+                    font = QFont()
+                    font.setFamily(str(get_font_family()))
+                    font.setPointSize(size)
+                    font.setWeight(cur.weight())
+                    font.setItalic(cur.italic())
+                    child.setFont(font)
             elif isinstance(child, QPushButton):
                 cur = child.font()
                 size = cur.pointSize()
                 if size > 0:
-                    child.setFont(QFont(get_font_family(), size, cur.weight(), cur.italic()))
+                    font = QFont()
+                    font.setFamily(str(get_font_family()))
+                    font.setPointSize(size)
+                    font.setWeight(cur.weight())
+                    font.setItalic(cur.italic())
+                    child.setFont(font)
             elif isinstance(child, QWidget):
                 self._update_widget_fonts(child)
+
+    # ─── 文件监听 ────────────────────────────────────────────────────────────────
+
+    @Slot(str)
+    def _on_data_file_changed(self, path: str) -> None:
+        """外部修改数据文件时的回调"""
+        if not self._watcher_enabled:
+            return
+        if self._watcher_ignore_next:
+            self._watcher_ignore_next = False
+            return
+        self._watcher_timer = QTimer()
+        self._watcher_timer.setSingleShot(True)
+        self._watcher_timer.timeout.connect(self._reload_data)
+        self._watcher_timer.start(100)
+
+    def _reload_data(self) -> None:
+        """重新加载数据并刷新界面"""
+        self.data = load_data()
+        for panel in self.panels.values():
+            panel.reload_tasks()
+        show = self.show_done_cb.isChecked()
+        for panel in self.panels.values():
+            panel.show_done = show
+        self._update_undo_icon()
+
+    def save(self) -> None:
+        """保存数据到磁盘"""
+        self._watcher_ignore_next = True
+        save_data(self.data)
 
     # ─── 窗口事件 ──────────────────────────────────────────────────────────────
 
@@ -731,4 +779,5 @@ class MainWindow(QMainWindow):
         geom_bytes = self.saveGeometry()
         self.data["geometry"] = bytes(geom_bytes.toBase64()).decode("ascii")
         self.save()
+        self._file_watcher.close()
         event.accept()

@@ -64,6 +64,10 @@ class QuadrantPanel(QFrame):
         from PySide6.QtCore import QTimer
         QTimer.singleShot(0, self._update_card_widths)
 
+    def reload_tasks(self) -> None:
+        """从外部重新加载数据后刷新任务列表"""
+        self.render_tasks()
+
     def _update_card_widths(self) -> None:
         scroll_width = self.scroll.viewport().width()
         if scroll_width > 50:

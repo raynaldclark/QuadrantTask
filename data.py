@@ -4,7 +4,9 @@
 import json
 import os
 import sys
-from typing import Any, Dict, Optional
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from constants import (
     DEADLINE_COLORS_DEFAULT,
@@ -71,3 +73,105 @@ def save_data(data: Dict[str, Any]) -> None:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except Exception as exc:
         print(f"保存失败: {exc}")
+
+
+# ─── CLI 操作函数 ─────────────────────────────────────────────────────────────
+
+def cli_add_task(quadrant: str, title: str, desc: str = "", deadline: str = "") -> Optional[str]:
+    """添加任务，返回任务ID"""
+    if quadrant not in [q["key"] for q in QUADS]:
+        print(f"无效的象限: {quadrant}")
+        return None
+    data = load_data()
+    task = {
+        "id": str(uuid.uuid4()),
+        "text": title,
+        "done": False,
+        "deadline": deadline,
+    }
+    if desc:
+        task["desc"] = desc
+    data["tasks"][quadrant].append(task)
+    save_data(data)
+    print(f"任务已添加: {task['id']}")
+    return task["id"]
+
+
+def cli_list_tasks(quadrant: str = "") -> List[Dict[str, Any]]:
+    """列出任务，可指定象限"""
+    data = load_data()
+    if quadrant:
+        if quadrant not in [q["key"] for q in QUADS]:
+            print(f"无效的象限: {quadrant}")
+            return []
+        tasks = data["tasks"].get(quadrant, [])
+    else:
+        tasks = []
+        for q_tasks in data["tasks"].values():
+            tasks.extend(q_tasks)
+    if not tasks:
+        print("没有任务")
+    else:
+        for t in tasks:
+            done_mark = "[x]" if t.get("done") else "[ ]"
+            deadline_str = f" 截止:{t.get('deadline', '')}" if t.get('deadline') else ""
+            print(f"[{t['id'][:8]}] {done_mark} {t.get('text', '')}{deadline_str}")
+    return tasks
+
+
+def cli_delete_task(task_id: str) -> bool:
+    """删除指定ID的任务"""
+    data = load_data()
+    for q_key, tasks in data["tasks"].items():
+        for i, task in enumerate(tasks):
+            if task["id"] == task_id:
+                data["tasks"][q_key].pop(i)
+                save_data(data)
+                print(f"任务已删除: {task_id}")
+                return True
+    print(f"未找到任务: {task_id}")
+    return False
+
+
+def cli_delete_all(quadrant: str = "") -> int:
+    """删除所有任务或指定象限的任务"""
+    data = load_data()
+    if quadrant:
+        if quadrant not in [q["key"] for q in QUADS]:
+            print(f"无效的象限: {quadrant}")
+            return 0
+        count = len(data["tasks"].get(quadrant, []))
+        data["tasks"][quadrant] = []
+    else:
+        count = sum(len(tasks) for tasks in data["tasks"].values())
+        for q_key in data["tasks"]:
+            data["tasks"][q_key] = []
+    save_data(data)
+    print(f"已删除 {count} 个任务")
+    return count
+
+
+def cli_edit_task(task_id: str, title: str = "", desc: str = "", deadline: str = "",
+                  done: Optional[bool] = None, quadrant: str = "") -> bool:
+    """编辑任务"""
+    data = load_data()
+    for q_key, tasks in data["tasks"].items():
+        for task in tasks:
+            if task["id"] == task_id:
+                if title:
+                    task["text"] = title
+                if desc:
+                    task["desc"] = desc
+                if deadline is not None:
+                    task["deadline"] = deadline
+                if done is not None:
+                    task["done"] = done
+                if quadrant and quadrant in [q["key"] for q in QUADS]:
+                    data["tasks"][q_key].remove(task)
+                    task["deadline"] = task.get("deadline", deadline)
+                    data["tasks"][quadrant].append(task)
+                save_data(data)
+                print(f"任务已更新: {task_id}")
+                return True
+    print(f"未找到任务: {task_id}")
+    return False
