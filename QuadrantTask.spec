@@ -1,9 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+pathex=[os.path.abspath('.')]
 
 a = Analysis(
     ['main.py'],
-    pathex=['.'],
     binaries=[],
     datas=[('source', 'source')],
     hiddenimports=['constants', 'task_card', 'quadrant_panel', 'dialogs', 'data'],
