@@ -23,8 +23,7 @@ from constants import (
 
 
 def _build_title_bar(title: str, parent: QDialog) -> QFrame:
-    bar = QFrame(parent)
-    bar.setObjectName("TitleBar")
+    bar = DraggableTitleBar(parent)
     bar.setStyleSheet(f"background:{BTN_PRIMARY_BG};")
     bar.setFixedHeight(44)
     lay = QHBoxLayout(bar)
@@ -462,6 +461,7 @@ class SettingsDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowCloseButtonHint)
+        self.setStyleSheet("QDialog { border: 1px solid #1E293B; }")
 
         self._on_font_change_callback = on_font_change
 
