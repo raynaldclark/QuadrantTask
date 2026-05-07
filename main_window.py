@@ -764,11 +764,11 @@ class MainWindow(QMainWindow):
     def _reload_data(self) -> None:
         """重新加载数据并刷新界面"""
         self.data = load_data()
-        for panel in self.panels.values():
-            panel.reload_tasks()
         show = self.show_done_cb.isChecked()
         for panel in self.panels.values():
+            panel.data = self.data
             panel.show_done = show
+            panel.reload_tasks()
         self._update_undo_icon()
 
     def save(self) -> None:
