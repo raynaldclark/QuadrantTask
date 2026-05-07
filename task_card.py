@@ -104,15 +104,15 @@ class TaskCard(QWidget):
         try:
             d = datetime.strptime(dl, "%Y-%m-%d").date()
             diff = (d - date.today()).days
-            if diff < 0:
+            if diff <= 0:
                 return QColor(deadline_colors.get("overdue", "#EF4444"))
-            if diff == 0:
-                return QColor(deadline_colors.get("today", "#F97316"))
-            if diff <= deadline_thresholds.get("days3", 3):
-                return QColor(deadline_colors.get("days3", "#EAB308"))
-            if diff <= deadline_thresholds.get("days7", 7):
-                return QColor(deadline_colors.get("days7", "#22C55E"))
-            return QColor(deadline_colors.get("normal", "#3B82F6"))
+            if diff <= deadline_thresholds.get("urgent", 3):
+                return QColor(deadline_colors.get("urgent", "#EAB308"))
+            if diff <= deadline_thresholds.get("short_term", 7):
+                return QColor(deadline_colors.get("short_term", "#22C55E"))
+            if diff <= deadline_thresholds.get("medium_term", 14):
+                return QColor(deadline_colors.get("medium_term", "#3B82F6"))
+            return QColor(deadline_colors.get("long_term", "#8B5CF6"))
         except Exception:
             return QColor(deadline_colors.get("none", "#94A3B8"))
 

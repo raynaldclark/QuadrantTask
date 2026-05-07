@@ -52,7 +52,7 @@ class QuadrantPanel(QFrame):
                 quad_cfg=self.cfg,
                 font_size=fs,
                 deadline_colors=self.data.get("deadline_colors", {}),
-                deadline_thresholds=self.data.get("deadline_thresholds", {"days3": 3, "days7": 7, "normal": 999}),
+                deadline_thresholds=self.data.get("deadline_thresholds", {"urgent": 3, "short_term": 7, "medium_term": 14, "long_term": 999}),
                 on_toggle=self._on_toggle,
                 on_delete=self._on_delete,
                 on_edit=self._on_edit,

@@ -665,9 +665,22 @@ class MainWindow(QMainWindow):
             for panel in self.panels.values():
                 panel.clear_all()
 
+    def _on_font_size_change(self, size: int) -> None:
+        """设置对话框字体大小变化回调"""
+        self.data["font_size"] = size
+        self.font_label.setText(str(size))
+        for panel in self.panels.values():
+            panel.render_tasks()
+
     def _show_settings(self) -> None:
         """显示设置对话框"""
-        dialog = SettingsDialog(self.data, on_font_change=self._on_font_preview, parent=self)
+        dialog = SettingsDialog(
+            self.data,
+            self.data["font_size"],
+            on_font_change=self._on_font_preview,
+            on_font_size_change=self._on_font_size_change,
+            parent=self
+        )
         if dialog.exec() == SettingsDialog.Accepted:
             self.data["deadline_colors"] = dialog.get_colors()
             self.data["deadline_thresholds"] = dialog.get_thresholds()

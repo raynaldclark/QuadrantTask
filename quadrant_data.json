@@ -1,17 +1,18 @@
 {
-  "font_size": 15,
-  "geometry": "AdnQywADAAAAAAPgAAABogAABzMAAASFAAAD4AAAAcEAAAczAAAEhQAAAAAAAAAACgAAAAPgAAABwQAABzMAAASF",
+  "font_size": 17,
+  "geometry": "AdnQywADAAAAAAU2AAAB9wAACKkAAASVAAAFNgAAAhYAAAipAAAElQAAAAAAAAAACgAAAAU2AAACFgAACKkAAASV",
   "deadline_colors": {
     "overdue": "#EF4444",
-    "today": "#F97316",
-    "days3": "#EAB308",
-    "days7": "#22C55E",
-    "normal": "#3B82F6",
+    "urgent": "#ea6d07",
+    "short_term": "#dede00",
+    "medium_term": "#59df11",
+    "long_term": "#6863f6",
     "none": "#94A3B8"
   },
   "deadline_thresholds": {
-    "days3": 7,
-    "days7": 21
+    "urgent": 3,
+    "short_term": 7,
+    "medium_term": 15
   },
   "tasks": {
     "q1": [

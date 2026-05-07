@@ -5,7 +5,7 @@ import uuid
 from typing import Callable, Dict, List, Optional, Tuple, Any
 
 from PySide6.QtCore import Qt, QPoint, QRect
-from PySide6.QtGui import QColor, QFont, QMouseEvent
+from PySide6.QtGui import QColor, QFont, QIntValidator, QMouseEvent
 from PySide6.QtWidgets import (
     QColorDialog, QDialog, QFontComboBox, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox,
@@ -456,17 +456,21 @@ class SettingsDialog(QDialog):
     def __init__(
         self,
         data: Dict[str, Any],
+        font_size: int,
         on_font_change: Optional[Callable[[str], None]] = None,
+        on_font_size_change: Optional[Callable[[int], None]] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowCloseButtonHint)
-        self.setStyleSheet("QDialog { border: 1px solid #1E293B; }")
+        self.setStyleSheet("QDialog { border: 1px solid #000000; }")
 
         self._on_font_change_callback = on_font_change
+        self._on_font_size_change_callback = on_font_size_change
+        self._fs = font_size
 
         self._original_colors = dict(data.get("deadline_colors", {}))
-        self._original_thresholds = dict(data.get("deadline_thresholds", {"days3": 3, "days7": 7}))
+        self._original_thresholds = dict(data.get("deadline_thresholds", {"urgent": 3, "short_term": 7, "medium_term": 14}))
         self._original_font_family = data.get("font_family", "Microsoft YaHei")
 
         self._colors = dict(self._original_colors)
@@ -478,79 +482,118 @@ class SettingsDialog(QDialog):
         self.setFixedSize(440, 560)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setContentsMargins(1, 1, 1, 1)
+        outer.setSpacing(0)
         outer.addWidget(_build_title_bar("设置", self))
 
         body = _build_body(self)
         b = QVBoxLayout(body)
-        b.setContentsMargins(20, 16, 20, 16)
+        b.setContentsMargins(20, 8, 20, 16)
         outer.addWidget(body)
 
+        font_section = QHBoxLayout()
+        font_section.setSpacing(8)
+
         font_h = QLabel("字体")
-        font_h.setFont(QFont(get_font_family(), 13, QFont.Bold))
-        font_h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; margin-bottom: 8px;")
-        b.addWidget(font_h)
+        font_h.setFont(QFont(get_font_family(), self._fs, QFont.Bold))
+        font_h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
+        font_section.addWidget(font_h)
+        font_section.addStretch()
+
+        minus_btn = QPushButton("A−")
+        minus_btn.setFont(QFont(get_font_family(), 10))
+        minus_btn.setFixedSize(36, 26)
+        minus_btn.setCursor(Qt.PointingHandCursor)
+        minus_btn.setStyleSheet(
+            "QPushButton { background: #F1F5F9; color: #1E293B; border: none; border-radius: 4px; }"
+            "QPushButton:hover { background: #E2E8F0; }"
+        )
+        minus_btn.clicked.connect(lambda: self._change_font_size(-1))
+
+        self._font_size_label = QLabel(str(self._fs))
+        self._font_size_label.setFont(QFont(get_font_family(), self._fs - 2, QFont.Bold))
+        self._font_size_label.setAlignment(Qt.AlignCenter)
+        self._font_size_label.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
+        self._font_size_label.setFixedWidth(24)
+
+        plus_btn = QPushButton("A＋")
+        plus_btn.setFont(QFont(get_font_family(), 10))
+        plus_btn.setFixedSize(36, 26)
+        plus_btn.setCursor(Qt.PointingHandCursor)
+        plus_btn.setStyleSheet(
+            "QPushButton { background: #F1F5F9; color: #1E293B; border: none; border-radius: 4px; }"
+            "QPushButton:hover { background: #E2E8F0; }"
+        )
+        plus_btn.clicked.connect(lambda: self._change_font_size(1))
+
+        font_section.addWidget(minus_btn)
+        font_section.addWidget(self._font_size_label)
+        font_section.addWidget(plus_btn)
+
+        b.addLayout(font_section)
+        b.addSpacing(8)
 
         font_row = QHBoxLayout()
         font_row.setSpacing(8)
 
         font_lbl = QLabel("应用字体：")
-        font_lbl.setFont(QFont(get_font_family(), 11))
+        font_lbl.setFont(QFont(get_font_family(), self._fs - 2))
         font_lbl.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
-        font_lbl.setFixedWidth(70)
+        font_lbl.setFixedWidth(90)
         font_row.addWidget(font_lbl)
+        font_row.addStretch()
 
         self._font_combo = QFontComboBox()
         self._font_combo.setFontFilters(QFontComboBox.FontFilters(0x1))
         self._font_combo.setCurrentText(self._font_family)
         self._font_combo.currentTextChanged.connect(self._on_font_changed)
         self._font_combo.setStyleSheet(f"""
-            QFontComboBox {{ border: 1px solid #CBD5E1; border-radius: 4px;
+            QFontComboBox {{ border: 1px solid #000000; border-radius: 4px;
                            padding: 4px 8px; color: {TEXT_MAIN}; background: #FFFFFF; }}
         """)
         font_row.addWidget(self._font_combo)
-        font_row.addStretch()
 
         b.addLayout(font_row)
         b.addSpacing(16)
 
         h = QLabel("截止日期颜色与阈值规则")
-        h.setFont(QFont(get_font_family(), 13, QFont.Bold))
+        h.setFont(QFont(get_font_family(), self._fs, QFont.Bold))
         h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; margin-bottom: 8px;")
         b.addWidget(h)
 
-        self._spin_widgets: Dict[str, QSpinBox] = {}
+        self._spin_widgets: Dict[str, QLineEdit] = {}
         self._label_widgets: Dict[str, QLabel] = {}
         self._color_widgets: Dict[str, QPushButton] = {}
 
         grid = QGridLayout()
         grid.setSpacing(8)
-        grid.setColumnStretch(0, 0)
-        grid.setColumnStretch(1, 1)
-        grid.setColumnStretch(2, 0)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 0)
+        grid.setColumnStretch(2, 1)
 
         row_idx = 0
 
-        for key, label_text, hint, color_key in [
-            ("overdue", "已过期", "< 0天", "overdue"),
-            ("today", "今天", "= 0天", "today"),
-        ]:
-            self._add_fixed_row_to_grid(grid, row_idx, key, label_text, hint, color_key)
-            row_idx += 1
+        self._add_fixed_row_to_grid(grid, row_idx, "overdue", "已过期", "≤ 0天", "overdue")
+        row_idx += 1
 
         for key, label_text, default_val in [
-            ("days3", "即将到期", 3),
-            ("days7", "近期", 7),
+            ("urgent", "即将到期", 3),
+            ("short_term", "近期", 7),
+            ("medium_term", "中期", 14),
         ]:
             self._add_config_row_to_grid(grid, row_idx, key, label_text, default_val)
             row_idx += 1
 
-        self._add_fixed_row_to_grid(grid, row_idx, "normal", "正常", "更长时间", "normal")
+        self._add_fixed_row_to_grid(grid, row_idx, "long_term", "远期", "更长时间", "long_term")
         row_idx += 1
         self._add_fixed_row_to_grid(grid, row_idx, "none", "无日期", "—", "none")
         row_idx += 1
 
-        b.addLayout(grid)
+        grid_container = QHBoxLayout()
+        grid_container.addStretch()
+        grid_container.addLayout(grid)
+        grid_container.addStretch()
+        b.addLayout(grid_container)
 
         b.addSpacing(16)
 
@@ -558,19 +601,19 @@ class SettingsDialog(QDialog):
         btn_row.addStretch()
 
         self._cancel_btn = QPushButton("取消")
-        self._cancel_btn.setFont(QFont(get_font_family(), 11))
+        self._cancel_btn.setFont(QFont(get_font_family(), self._fs - 2))
         self._cancel_btn.setFixedSize(90, 32)
         self._cancel_btn.setCursor(Qt.PointingHandCursor)
         self._cancel_btn.setStyleSheet(f"""
             QPushButton {{ background: #F1F5F9; color: {TEXT_SUB};
-                          border: 1px solid #E2E8F0; border-radius: 6px; }}
+                          border: none; border-radius: 6px; }}
             QPushButton:hover {{ background: #E2E8F0; }}
         """)
         self._cancel_btn.clicked.connect(self._on_cancel)
         btn_row.addWidget(self._cancel_btn)
 
         self._ok_btn = QPushButton("确定")
-        self._ok_btn.setFont(QFont(get_font_family(), 11, QFont.Bold))
+        self._ok_btn.setFont(QFont(get_font_family(), self._fs - 2, QFont.Bold))
         self._ok_btn.setFixedSize(90, 32)
         self._ok_btn.setCursor(Qt.PointingHandCursor)
         self._ok_btn.setStyleSheet(f"""
@@ -582,8 +625,8 @@ class SettingsDialog(QDialog):
         btn_row.addWidget(self._ok_btn)
         b.addLayout(btn_row)
 
-        footer = QLabel("版本 1.2.1  |  开发者：Raynald+Minimax M2.7")
-        footer.setFont(QFont(get_font_family(), 9))
+        footer = QLabel("版本 1.2.2  |  开发者：Raynald+Minimax M2.7")
+        footer.setFont(QFont(get_font_family(), self._fs - 4))
         footer.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
         footer.setAlignment(Qt.AlignCenter)
         b.addWidget(footer)
@@ -592,6 +635,12 @@ class SettingsDialog(QDialog):
         self._font_family = font_family
         if self._on_font_change_callback:
             self._on_font_change_callback(font_family)
+
+    def _change_font_size(self, delta: int) -> None:
+        self._fs = max(10, min(24, self._fs + delta))
+        self._font_size_label.setText(str(self._fs))
+        if self._on_font_size_change_callback:
+            self._on_font_size_change_callback(self._fs)
 
     def _on_cancel(self) -> None:
         if self._on_font_change_callback:
@@ -605,12 +654,12 @@ class SettingsDialog(QDialog):
         return dict(self._colors)
 
     def get_thresholds(self) -> Dict[str, int]:
-        return {key: spin.value() for key, spin in self._spin_widgets.items()}
+        return {key: int(edit.text()) for key, edit in self._spin_widgets.items()}
 
     def get_font_family(self) -> str:
         return self._font_family
 
-    def _on_threshold_change(self, key: str, lbl: QLabel, base_text: str, spin: QSpinBox) -> None:
+    def _on_threshold_change(self, key: str, lbl: QLabel, base_text: str, spin: QWidget) -> None:
         lbl.setText(f"{base_text}")
 
     def _make_color_btn(self, key: str) -> QPushButton:
@@ -626,10 +675,10 @@ class SettingsDialog(QDialog):
 
     def _apply_btn_style(self, btn: QPushButton, hex_color: str) -> None:
         btn.setStyleSheet(
-            f"QPushButton {{ background: {hex_color}; border: 1px solid #CBD5E1; "
+            f"QPushButton {{ background: {hex_color}; border: none; "
             f"border-radius: 4px; color: #FFFFFF; font-size: 11px; "
             f"font-family: 'Microsoft YaHei'; }}"
-            f"QPushButton:hover {{ border-color: #94A3B8; }}"
+            f"QPushButton:hover {{ opacity: 0.9; }}"
         )
 
     def _pick_color(self, key: str, btn: QPushButton) -> None:
@@ -652,15 +701,15 @@ class SettingsDialog(QDialog):
         color_key: str,
     ) -> None:
         col = QLabel(label_text)
-        col.setFont(QFont(get_font_family(), 11))
+        col.setFont(QFont(get_font_family(), self._fs - 2))
         col.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
         col.setFixedWidth(90)
         grid.addWidget(col, row, 0)
 
         hint_lbl = QLabel(hint)
-        hint_lbl.setFont(QFont(get_font_family(), 10))
+        hint_lbl.setFont(QFont(get_font_family(), self._fs - 3))
         hint_lbl.setStyleSheet("color:#94A3B8; background:transparent;")
-        hint_lbl.setFixedWidth(70)
+        hint_lbl.setFixedWidth(110)
         grid.addWidget(hint_lbl, row, 1)
 
         color_btn = self._make_color_btn(color_key)
@@ -676,35 +725,34 @@ class SettingsDialog(QDialog):
         default_val: int,
     ) -> None:
         dyn_lbl = QLabel(label_text)
-        dyn_lbl.setFont(QFont(get_font_family(), 11))
+        dyn_lbl.setFont(QFont(get_font_family(), self._fs - 2))
         dyn_lbl.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
         dyn_lbl.setFixedWidth(90)
         self._label_widgets[key] = dyn_lbl
         grid.addWidget(dyn_lbl, row, 0)
 
-        spin = QSpinBox()
-        spin.setFixedSize(70, 26)
-        spin.setFont(QFont(get_font_family(), 11))
-        spin.setMinimum(1)
-        spin.setMaximum(999)
-        spin.setValue(self._thresholds.get(key, default_val))
-        spin.setStyleSheet(f"""
-            QSpinBox {{ border: 1px solid #CBD5E1; border-radius: 4px;
-                       padding: 2px 6px; color: {TEXT_MAIN}; background: #FFFFFF; }}
+        edit = QLineEdit()
+        edit.setFixedSize(70, 26)
+        edit.setFont(QFont(get_font_family(), self._fs - 2))
+        edit.setValidator(QIntValidator(1, 999))
+        edit.setText(str(self._thresholds.get(key, default_val)))
+        edit.setStyleSheet(f"""
+            QLineEdit {{ border: 1px solid #000000; border-radius: 4px;
+                        padding: 2px 6px; color: {TEXT_MAIN}; background: #FFFFFF; }}
         """)
-        spin.valueChanged.connect(
-            lambda val, k=key, lbl=dyn_lbl, txt=label_text, sp=spin:
-                self._on_threshold_change(k, lbl, txt, sp)
+        edit.textChanged.connect(
+            lambda val, k=key, lbl=dyn_lbl, txt=label_text, e=edit:
+                self._on_threshold_change(k, lbl, txt, e)
         )
-        self._spin_widgets[key] = spin
+        self._spin_widgets[key] = edit
 
         suffix = QLabel("天")
-        suffix.setFont(QFont(get_font_family(), 11))
+        suffix.setFont(QFont(get_font_family(), self._fs - 2))
         suffix.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
 
         mid = QHBoxLayout()
         mid.setSpacing(4)
-        mid.addWidget(spin)
+        mid.addWidget(edit)
         mid.addWidget(suffix)
         grid.addLayout(mid, row, 1)
 
@@ -712,4 +760,4 @@ class SettingsDialog(QDialog):
         grid.addWidget(color_btn, row, 2)
         self._color_widgets[key] = color_btn
 
-        self._on_threshold_change(key, dyn_lbl, label_text, spin)
+        self._on_threshold_change(key, dyn_lbl, label_text, edit)

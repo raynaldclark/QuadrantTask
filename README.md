@@ -1,95 +1,27 @@
-# 四象限任务板 (Quadrant Task Board)
+# 四象限任务板
 
-基于 PySide6 的艾森豪威尔矩阵（Eisenhower Matrix）任务管理桌面应用。
+基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![预览图](source/Preview.jpg)
+![四象限任务板](https://img.shields.io/badge/version-v1.2.2-blue)
+![Python](https://img.shields.io/badge/python-3.8+-green)
+![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
 ## 功能特性
 
-### 四象限管理
-- **紧急且重要 (Q1)** - 立即处理，红色系
-- **重要不紧急 (Q2)** - 规划执行，蓝色系
-- **紧急不重要 (Q3)** - 委托他人，黄色系
-- **不紧急不重要 (Q4)** - 考虑删减，灰色系
+- **四象限管理**：将任务按重要/紧急程度分配到四个象限
+- **拖拽排序**：任务卡片支持拖拽调整顺序
+- **撤销/重做**：支持多步撤销和重做操作
+- **截止日期**：支持为任务设置截止日期，自动以颜色标识剩余时间
+- **显示/隐藏已完成**：可切换已完成任务是否显示
+- **字体调节**：支持调节界面字体大小
+- **HiDPI 支持**：完美适配各种分辨率屏幕
 
-### 核心功能
-- **拖拽移动** - 任务卡片可在象限间自由拖拽
-- **双击编辑** - 双击任务卡片直接编辑
-- **截止日期** - 支持 YYYY-MM-DD 格式，颜色随临近程度变化
-- **完成标记** - 点击复选框标记任务完成，支持显示/隐藏已完成任务
-- **字号调节** - 工具栏 A− / A＋ 按钮调节全局字体大小
-- **颜色自定义** - 设置界面可自定义各状态截止日期颜色
-- **数据持久化** - 自动保存到 `quadrant_data.json`
-- **双击添加** - 双击象限空白区域，快速添加任务到该象限
-- **撤销/重做** - 支持 7 种操作的撤销与重做：删除任务、标记完成/未完成、编辑任务、清空已完成、清空全部、拖拽移动、添加任务
+## 运行
 
-### 工具栏按钮
-| 按钮 | 功能 |
-|------|------|
-| `＋` | 新建任务 |
-| `✓` | 切换显示/隐藏已完成任务 |
-| `设置` | 自定义截止日期颜色与阈值 |
-| `清空已做` | 清除当前象限已标记任务 |
-| `清空全部` | 清除当前象限所有任务（需确认） |
-| `↩` | 撤销上一步操作 |
-| `A−` / `A＋` | 缩小/放大全局字体 |
-
-## 界面预览
-
-应用采用现代 Fusion 风格，中文雅黑字体，四象限以不同色调区分：
-- Q1 红色调、Q2 蓝色调、Q3 黄色调、Q4 灰色调
-- 任务卡片左侧带有象限色条标识
-- 鼠标悬停显示删除动作条（位于右下角，与截止日期重叠）
-
-### 添加/编辑对话框
-- 象限以 2x2 可视化网格展示，带象限色条
-- 选中象限高亮显示，操作更直观
-
-## 技术栈
-
-- **Python 3.11+**
-- **PySide6** - Qt 图形界面
-- **PyInstaller** - 打包为独立 EXE
-
-## 项目结构
-
-```
-QuadrantTask/
-├── main.py              # 应用入口
-├── __init__.py          # 包初始化，版本信息
-├── constants.py         # 全局常量：象限定义、颜色、字体
-├── data.py              # 数据持久化层（JSON）
-├── main_window.py       # 主窗口与工具栏
-├── quadrant_panel.py    # 单个象限面板（含拖放逻辑）
-├── task_card.py         # 可拖拽任务卡片组件
-├── dialogs.py           # 添加/编辑/设置对话框
-├── source/              # SVG 图标资源
-│   ├── icon.svg         # 窗口图标
-│   ├── add.svg          # 添加按钮
-│   ├── delete.svg       # 删除按钮
-│   ├── delfin.svg       # 清空已完成
-│   ├── delall.svg       # 清空全部
-│   ├── fin.svg / fin2.svg    # 显示/隐藏已完成
-│   └── undo.svg / undo2.svg  # 撤销/重做
-├── QuadrantTask.spec    # PyInstaller 打包配置
-├── quadrant_data.json   # 任务数据存储
-└── Preview.jpg          # 预览图
-```
-
-## 运行方式
-
-### 直接运行源码
 ```bash
-pip install PySide6
+pip install -r requirements.txt
 python main.py
 ```
-
-### 打包为 EXE
-```bash
-pip install pyinstaller
-pyinstaller QuadrantTask.spec
-```
-生成的可执行文件位于 `dist/QuadrantTask.exe`。
 
 ## 数据存储
 
@@ -102,7 +34,32 @@ pyinstaller QuadrantTask.spec
 
 ## 版本
 
-v1.2.1
+v1.2.2
+
+### v1.2.2 设置界面优化
+
+#### 设置界面重构
+- 标题栏与主体区域无缝衔接，主体区域外圈添加 1px 黑色边框
+- 去除主体区域内部元素的独立边框
+- 日期 spinbox 改为纯数字输入框
+- 截止日期配置区域结构重组为 6 行：已过期、即将到期、近期、中期、远期、无日期
+- 日期阈值键名重命名（`urgent`/`short_term`/`medium_term`/`long_term`）更清晰
+
+#### 字体设置预览
+- 设置界面添加字体大小调节按钮（与主界面同步）
+- 实时预览字体变化效果
+- 取消时自动恢复原始设置
+
+#### 架构改进
+- 设置对话框支持 `font_size` 和 `on_font_size_change` 回调参数
+- `SettingsDialog` 初始化时从外部传入 `font_size`，保持与主界面字体一致
+
+### v1.2.1 HiDPI 图标修复
+
+- 改用环境变量 `QT_ENABLE_HIGHDPI_SCALING` 和 `QT_SCALE_FACTOR_ROUNDING_POLICY` 启用 HiDPI 支持，替代已弃用的 `AA_EnableHighDpiScaling` 属性
+- 图标始终添加 1x 和 2x 两个分辨率版本，Qt 根据当前 DPI 自动选择最合适的版本
+- 修复切换图标时只显示左上四分之一的问题
+- 支持所有 DPI 缩放比例：100%、125%、150%、175%、200%、225% 等
 
 ### v1.2.0 更新内容
 
@@ -123,10 +80,3 @@ v1.2.1
 - 使用 `TYPE_CHECKING` 避免循环导入
 - 公共方法添加 Docstrings 文档
 - 提取公共函数 `_build_title_section()`、`_create_toolbar_icon_btn()` 减少重复代码
-
-### v1.2.1 HiDPI 图标修复
-
-- 改用环境变量 `QT_ENABLE_HIGHDPI_SCALING` 和 `QT_SCALE_FACTOR_ROUNDING_POLICY` 启用 HiDPI 支持，替代已弃用的 `AA_EnableHighDpiScaling` 属性
-- 图标始终添加 1x 和 2x 两个分辨率版本，Qt 根据当前 DPI 自动选择最合适的版本
-- 修复切换图标时只显示左上四分之一的问题
-- 支持所有 DPI 缩放比例：100%、125%、150%、175%、200%、225% 等

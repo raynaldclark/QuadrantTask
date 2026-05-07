@@ -50,21 +50,22 @@ BTN_PRIMARY_FG: str = "#FFFFFF"
 # ─── 截止日期颜色（默认值，可通过设置界面修改）───────────────────────────────
 DEADLINE_COLORS_DEFAULT: Dict[str, str] = {
     "overdue": "#EF4444",
-    "today": "#F97316",
-    "days3": "#EAB308",
-    "days7": "#22C55E",
-    "normal": "#3B82F6",
+    "urgent": "#EAB308",
+    "short_term": "#22C55E",
+    "medium_term": "#3B82F6",
+    "long_term": "#8B5CF6",
     "none": "#94A3B8",
 }
 
 # ─── 截止日期阈值（默认值，可通过设置界面修改）────────────────────────────────
 DEADLINE_THRESHOLDS_DEFAULT: Dict[str, int] = {
-    "days3": 3,
-    "days7": 7,
+    "urgent": 3,
+    "short_term": 7,
+    "medium_term": 14,
 }
 
 # ─── 截止日期阈值键的顺序（用于 SettingsDialog 渲染）─────────────────────────
-DEADLINE_THRESHOLD_KEYS: List[str] = ["days3", "days7"]
+DEADLINE_THRESHOLD_KEYS: List[str] = ["urgent", "short_term", "medium_term"]
 
 # ─── 象限定义 ─────────────────────────────────────────────────────────────────
 @dataclass
