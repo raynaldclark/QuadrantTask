@@ -77,8 +77,10 @@ class MainWindow(QMainWindow):
 
         self._file_watcher = QFileSystemWatcher()
         abs_path = os.path.abspath(DATA_FILE)
-        self._file_watcher.addPath(abs_path)
-        self._file_watcher.fileChanged.connect(self._on_data_file_changed)
+        if self._file_watcher.addPath(abs_path):
+            self._file_watcher.fileChanged.connect(self._on_data_file_changed)
+        else:
+            print(f"[WARN] Failed to watch: {abs_path}")
         self._watcher_enabled = True
         self._watcher_ignore_next = False
 
@@ -748,12 +750,16 @@ class MainWindow(QMainWindow):
     @Slot(str)
     def _on_data_file_changed(self, path: str) -> None:
         """外部修改数据文件时的回调"""
+        print(f"[WATCHER] File changed: {path}")
         if not self._watcher_enabled:
+            print("[WATCHER] Ignored: watcher disabled")
             return
         if self._watcher_ignore_next:
             self._watcher_ignore_next = False
+            print("[WATCHER] Ignored: from save")
             return
-        QTimer.singleShot(100, self._reload_data)
+        print("[WATCHER] Scheduling reload...")
+        QTimer.singleShot(200, self._reload_data)
 
     def _reload_data(self) -> None:
         """重新加载数据并刷新界面"""
@@ -777,5 +783,5 @@ class MainWindow(QMainWindow):
         geom_bytes = self.saveGeometry()
         self.data["geometry"] = bytes(geom_bytes.toBase64()).decode("ascii")
         self.save()
-        self._file_watcher.close()
+        self._file_watcher.deleteLater()
         event.accept()
