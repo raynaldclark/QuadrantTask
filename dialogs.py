@@ -426,6 +426,7 @@ class SettingsDialog(QDialog):
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowCloseButtonHint)
         self._colors: Dict[str, str] = dict(data.get("deadline_colors", {}))
         self._thresholds: Dict[str, int] = dict(
             data.get("deadline_thresholds", {"days3": 3, "days7": 7})
@@ -434,7 +435,7 @@ class SettingsDialog(QDialog):
 
         self.setWindowTitle("设置")
         self.setModal(True)
-        self.setFixedSize(440, 500)
+        self.setFixedSize(440, 540)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -511,8 +512,6 @@ class SettingsDialog(QDialog):
 
         b.addLayout(grid)
 
-        b.addStretch()
-
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
@@ -540,6 +539,12 @@ class SettingsDialog(QDialog):
         ok.clicked.connect(self.accept)
         btn_row.addWidget(ok)
         b.addLayout(btn_row)
+
+        footer = QLabel("版本 1.2.1  |  开发者：Raynald+Minimax M2.7")
+        footer.setFont(QFont(get_font_family(), 9))
+        footer.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
+        footer.setAlignment(Qt.AlignCenter)
+        b.addWidget(footer)
 
     def _add_fixed_row_to_grid(
         self,
