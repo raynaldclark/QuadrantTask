@@ -5,7 +5,7 @@ import os
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtCore import QByteArray, QSize, Qt, Slot
+from PySide6.QtCore import QByteArray, QRect, QSize, Qt, Slot
 from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -192,16 +192,41 @@ class MainWindow(QMainWindow):
         icon_path = os.path.join(_base_dir, "source", "icon.svg")
         if os.path.exists(icon_path):
             renderer = QSvgRenderer(icon_path)
-            scale = self.devicePixelRatio()
-            pixmap = QPixmap(int(256 * scale), int(256 * scale))
-            pixmap.fill(Qt.transparent)
-            painter = QPainter(pixmap)
-            renderer.render(painter)
-            painter.end()
-            self.setWindowIcon(QIcon(pixmap))
 
-    def _svg_icon(self, filename: str, size: int = 20) -> QIcon:
-        """从 SVG 文件加载图标（支持 HiDPI）"""
+            icon = QIcon()
+
+            # 1x 版本: 256x256, dpr=1.0
+            pixmap_1x = QPixmap(256, 256)
+            pixmap_1x.fill(Qt.transparent)
+            p1 = QPainter(pixmap_1x)
+            p1.setRenderHint(QPainter.Antialiasing)
+            renderer.render(p1)
+            p1.end()
+            pixmap_1x.setDevicePixelRatio(1.0)
+            icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.On)
+
+            # 2x 版本: 512x512, dpr=2.0
+            pixmap_2x = QPixmap(512, 512)
+            pixmap_2x.fill(Qt.transparent)
+            p2 = QPainter(pixmap_2x)
+            p2.setRenderHint(QPainter.Antialiasing)
+            renderer.render(p2)
+            p2.end()
+            pixmap_2x.setDevicePixelRatio(2.0)
+            icon.addPixmap(pixmap_2x, QIcon.Normal, QIcon.On)
+
+            self.setWindowIcon(icon)
+
+    def _svg_icon(self, filename: str, logical_size: int = 20) -> QIcon:
+        """从 SVG 文件加载图标（支持 HiDPI）
+
+        Args:
+            filename: SVG 文件名
+            logical_size: 逻辑像素大小（不考虑 DPI 缩放）
+
+        Returns:
+            QIcon，根据 devicePixelRatio 自动适配
+        """
         if getattr(sys, 'frozen', False):
             _base_dir = sys._MEIPASS
         else:
@@ -210,32 +235,45 @@ class MainWindow(QMainWindow):
         if os.path.exists(path):
             renderer = QSvgRenderer(path)
             if renderer.isValid():
-                vb = renderer.viewBox()
-                native_w = vb.width()
-                native_h = vb.height()
+                icon = QIcon()
 
-                # 根据 DPI 缩放因子放大原生 pixmap，避免放大模糊
+                # 1x 版本：dpr=1.0
+                pixmap_1x = QPixmap(logical_size, logical_size)
+                pixmap_1x.fill(Qt.transparent)
+                p1 = QPainter(pixmap_1x)
+                p1.setRenderHint(QPainter.Antialiasing)
+                p1.setRenderHint(QPainter.SmoothPixmapTransform)
+                renderer.render(p1, QRect(0, 0, logical_size, logical_size))
+                p1.end()
+                pixmap_1x.setDevicePixelRatio(1.0)
+                icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.On)
+
+                # 2x 版本：dpr=2.0（无论当前 DPI 是否为 2.0 都添加，确保清晰）
+                pixmap_2x = QPixmap(logical_size * 2, logical_size * 2)
+                pixmap_2x.fill(Qt.transparent)
+                p2 = QPainter(pixmap_2x)
+                p2.setRenderHint(QPainter.Antialiasing)
+                p2.setRenderHint(QPainter.SmoothPixmapTransform)
+                renderer.render(p2, QRect(0, 0, logical_size * 2, logical_size * 2))
+                p2.end()
+                pixmap_2x.setDevicePixelRatio(2.0)
+                icon.addPixmap(pixmap_2x, QIcon.Normal, QIcon.On)
+
+                # 如果当前 DPI 是其他值（如 1.5, 1.75），也添加对应版本
                 scale = self.devicePixelRatio()
-                render_w = int(native_w * scale)
-                render_h = int(native_h * scale)
+                if scale != 1.0 and scale != 2.0:
+                    physical_size = int(logical_size * scale)
+                    pixmap_scale = QPixmap(physical_size, physical_size)
+                    pixmap_scale.fill(Qt.transparent)
+                    p_scale = QPainter(pixmap_scale)
+                    p_scale.setRenderHint(QPainter.Antialiasing)
+                    p_scale.setRenderHint(QPainter.SmoothPixmapTransform)
+                    renderer.render(p_scale, QRect(0, 0, physical_size, physical_size))
+                    p_scale.end()
+                    pixmap_scale.setDevicePixelRatio(scale)
+                    icon.addPixmap(pixmap_scale, QIcon.Normal, QIcon.On)
 
-                pixmap = QPixmap(render_w, render_h)
-                pixmap.fill(Qt.transparent)
-                painter = QPainter(pixmap)
-                renderer.render(painter)
-                painter.end()
-
-                # 如果渲染尺寸大于目标尺寸，先缩放一次确保清晰
-                if render_w > size or render_h > size:
-                    scaled = pixmap.scaled(
-                        int(size * scale), int(size * scale),
-                        Qt.IgnoreAspectRatio,
-                        Qt.SmoothTransformation
-                    )
-                    # 返回实际尺寸的 QIcon（DPI 适配）
-                    return QIcon(scaled)
-
-                return QIcon(pixmap)
+                return icon
         return QIcon()
 
     # ─── 工具栏 ────────────────────────────────────────────────────────────────
@@ -297,9 +335,9 @@ class MainWindow(QMainWindow):
     ) -> QWidget:
         """创建工具栏图标按钮（DPI 自适应）"""
         btn = QPushButton()
-        base_size = self.style().pixelMetric(QStyle.PM_IconViewIconSize)
-        icon_size = max(24, base_size)
-        btn.setIcon(self._svg_icon(icon_file, icon_size))
+        # 使用固定的逻辑尺寸，setIconSize 接受的是逻辑像素
+        logical_icon_size = 36
+        btn.setIcon(self._svg_icon(icon_file, logical_icon_size))
         btn.setIconSize(QSize(self._px(36), self._px(36)))
         btn.setFixedSize(
             self._px(60),  # 逻辑 60px
@@ -338,9 +376,8 @@ class MainWindow(QMainWindow):
         """创建工具栏切换图标按钮（DPI 自适应）"""
         btn = QPushButton()
         icon_file = icon_on if is_on else icon_off
-        base_size = self.style().pixelMetric(QStyle.PM_IconViewIconSize)
-        icon_size = max(24, base_size)
-        btn.setIcon(self._svg_icon(icon_file, icon_size))
+        logical_icon_size = 36
+        btn.setIcon(self._svg_icon(icon_file, logical_icon_size))
         btn.setIconSize(QSize(self._px(36), self._px(36)))
         btn.setFixedSize(
             self._px(60),

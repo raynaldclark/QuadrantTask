@@ -102,7 +102,7 @@ pyinstaller QuadrantTask.spec
 
 ## 版本
 
-v1.2.0
+v1.2.1
 
 ### v1.2.0 更新内容
 
@@ -123,3 +123,10 @@ v1.2.0
 - 使用 `TYPE_CHECKING` 避免循环导入
 - 公共方法添加 Docstrings 文档
 - 提取公共函数 `_build_title_section()`、`_create_toolbar_icon_btn()` 减少重复代码
+
+### v1.2.1 HiDPI 图标修复
+
+- 改用环境变量 `QT_ENABLE_HIGHDPI_SCALING` 和 `QT_SCALE_FACTOR_ROUNDING_POLICY` 启用 HiDPI 支持，替代已弃用的 `AA_EnableHighDpiScaling` 属性
+- 图标始终添加 1x 和 2x 两个分辨率版本，Qt 根据当前 DPI 自动选择最合适的版本
+- 修复切换图标时只显示左上四分之一的问题
+- 支持所有 DPI 缩放比例：100%、125%、150%、175%、200%、225% 等
