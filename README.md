@@ -2,7 +2,7 @@
 
 基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![四象限任务板](https://img.shields.io/badge/version-v1.2.2-blue)
+![四象限任务板](https://img.shields.io/badge/version-v1.2.3-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
@@ -17,6 +17,36 @@
 - **显示/隐藏已完成**：可切换已完成任务是否显示
 - **字体调节**：支持调节界面字体大小
 - **HiDPI 支持**：完美适配各种分辨率屏幕
+- **CLI 支持**：可通过命令行进行任务的增删改查操作
+
+## CLI 命令
+
+```bash
+# 添加任务（默认未完成）
+python main.py --cli add -q q1 -t "任务标题" -l 2026-05-10
+
+# 列出任务（可指定象限）
+python main.py --cli list
+python main.py --cli list -q q1
+
+# 删除任务
+python main.py --cli delete -i <task_id>
+python main.py --cli delete --all        # 删除所有
+python main.py --cli delete --all -q q1 # 删除指定象限
+
+# 编辑任务
+python main.py --cli edit -i <task_id> -t "新标题"
+python main.py --cli edit -i <task_id> --done true
+python main.py --cli edit -i <task_id> -q q2 --done false
+
+# 查看帮助
+python main.py --cli --help
+python main.py --cli add --help
+```
+
+象限说明：`q1` 紧急且重要，`q2` 重要不紧急，`q3` 紧急不重要，`q4` 不紧急不重要。
+
+> CLI 与 GUI 数据实时同步，关闭 GUI 前请确保已完成编辑。
 
 ## 运行
 
@@ -36,7 +66,15 @@ python main.py
 
 ## 版本
 
-v1.2.2
+v1.2.3
+
+### v1.2.3 CLI 支持
+
+- 新增 CLI 命令：add、list、delete、edit
+- delete 支持 `--all` 参数删除全部任务
+- edit 支持修改标题、截止日期、象限、完成状态
+- GUI 添加文件监听，CLI 修改数据后界面自动刷新
+- 打开 GUI 状态下，CLI 和 GUI 数据实时同步
 
 ### v1.2.2 设置界面优化
 
