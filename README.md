@@ -6,6 +6,8 @@
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
+![预览](preview.jpg)
+
 ## 功能特性
 
 - **四象限管理**：将任务按重要/紧急程度分配到四个象限
