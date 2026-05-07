@@ -667,7 +667,7 @@ class MainWindow(QMainWindow):
 
     def _show_settings(self) -> None:
         """显示设置对话框"""
-        dialog = SettingsDialog(self.data, self)
+        dialog = SettingsDialog(self.data, on_font_change=self._on_font_preview, parent=self)
         if dialog.exec() == SettingsDialog.Accepted:
             self.data["deadline_colors"] = dialog.get_colors()
             self.data["deadline_thresholds"] = dialog.get_thresholds()
@@ -678,6 +678,16 @@ class MainWindow(QMainWindow):
             self._rebuild_ui()
             for panel in self.panels.values():
                 panel.render_tasks()
+        else:
+            _set_font_family(self.data["font_family"])
+            self._rebuild_ui()
+
+    def _on_font_preview(self, font_family: str) -> None:
+        """字体预览回调"""
+        _set_font_family(font_family)
+        self._rebuild_ui()
+        for panel in self.panels.values():
+            panel.render_tasks()
 
     def _rebuild_ui(self) -> None:
         """重新构建 UI 字体"""

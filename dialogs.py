@@ -2,10 +2,10 @@
 """对话框：AddTaskDialog / EditTaskDialog / SettingsDialog"""
 
 import uuid
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Callable, Dict, List, Optional, Tuple, Any
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, QPoint, QRect
+from PySide6.QtGui import QColor, QFont, QMouseEvent
 from PySide6.QtWidgets import (
     QColorDialog, QDialog, QFontComboBox, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox,
@@ -24,6 +24,7 @@ from constants import (
 
 def _build_title_bar(title: str, parent: QDialog) -> QFrame:
     bar = QFrame(parent)
+    bar.setObjectName("TitleBar")
     bar.setStyleSheet(f"background:{BTN_PRIMARY_BG};")
     bar.setFixedHeight(44)
     lay = QHBoxLayout(bar)
@@ -32,10 +33,12 @@ def _build_title_bar(title: str, parent: QDialog) -> QFrame:
     lbl = QLabel(title, bar)
     lbl.setFont(QFont(get_font_family(), 15, QFont.Bold))
     lbl.setStyleSheet("color:#FFFFFF; background:transparent; border:none;")
+    lbl.setObjectName("TitleLabel")
     lay.addWidget(lbl)
     lay.addStretch()
 
     close_btn = QPushButton("✕", bar)
+    close_btn.setObjectName("CloseButton")
     close_btn.setStyleSheet(
         "QPushButton { background: transparent; color: #94A3B8; border: none; "
         "font-size: 16px; padding: 4px 8px; }"
@@ -51,6 +54,31 @@ def _build_body(parent: QWidget) -> QWidget:
     body = QWidget(parent)
     body.setStyleSheet("background:#FFFFFF;")
     return body
+
+
+class DraggableTitleBar(QFrame):
+    """可拖拽的标题栏"""
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self._drag_start_pos = QPoint()
+        self.setCursor(Qt.SizeAllCursor)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.LeftButton:
+            self._drag_start_pos = event.globalPosition().toPoint()
+            event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if event.buttons() & Qt.LeftButton:
+            delta = event.globalPosition().toPoint() - self._drag_start_pos
+            if self.window().windowFlags() & Qt.FramelessWindowHint:
+                self.window().move(self.window().pos() + delta)
+            self._drag_start_pos = event.globalPosition().toPoint()
+            event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        event.accept()
 
 
 class AddTaskDialog(QDialog):
@@ -418,24 +446,36 @@ class EditTaskDialog(QDialog):
 
 
 class SettingsDialog(QDialog):
-    """设置对话框"""
+    """设置对话框
+
+    Args:
+        data: 应用数据字典
+        on_font_change: 字体变化时的回调函数，接收 font_family 参数用于实时预览
+        parent: 父 widget
+    """
 
     def __init__(
         self,
         data: Dict[str, Any],
+        on_font_change: Optional[Callable[[str], None]] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowCloseButtonHint)
-        self._colors: Dict[str, str] = dict(data.get("deadline_colors", {}))
-        self._thresholds: Dict[str, int] = dict(
-            data.get("deadline_thresholds", {"days3": 3, "days7": 7})
-        )
-        self._font_family = data.get("font_family", "Microsoft YaHei")
+
+        self._on_font_change_callback = on_font_change
+
+        self._original_colors = dict(data.get("deadline_colors", {}))
+        self._original_thresholds = dict(data.get("deadline_thresholds", {"days3": 3, "days7": 7}))
+        self._original_font_family = data.get("font_family", "Microsoft YaHei")
+
+        self._colors = dict(self._original_colors)
+        self._thresholds = dict(self._original_thresholds)
+        self._font_family = self._original_font_family
 
         self.setWindowTitle("设置")
         self.setModal(True)
-        self.setFixedSize(440, 540)
+        self.setFixedSize(440, 560)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -472,7 +512,7 @@ class SettingsDialog(QDialog):
         font_row.addStretch()
 
         b.addLayout(font_row)
-        b.addSpacing(8)
+        b.addSpacing(16)
 
         h = QLabel("截止日期颜色与阈值规则")
         h.setFont(QFont(get_font_family(), 13, QFont.Bold))
@@ -512,32 +552,34 @@ class SettingsDialog(QDialog):
 
         b.addLayout(grid)
 
+        b.addSpacing(16)
+
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        cancel = QPushButton("取消")
-        cancel.setFont(QFont(get_font_family(), 11))
-        cancel.setFixedSize(90, 32)
-        cancel.setCursor(Qt.PointingHandCursor)
-        cancel.setStyleSheet(f"""
+        self._cancel_btn = QPushButton("取消")
+        self._cancel_btn.setFont(QFont(get_font_family(), 11))
+        self._cancel_btn.setFixedSize(90, 32)
+        self._cancel_btn.setCursor(Qt.PointingHandCursor)
+        self._cancel_btn.setStyleSheet(f"""
             QPushButton {{ background: #F1F5F9; color: {TEXT_SUB};
                           border: 1px solid #E2E8F0; border-radius: 6px; }}
             QPushButton:hover {{ background: #E2E8F0; }}
         """)
-        cancel.clicked.connect(self.reject)
-        btn_row.addWidget(cancel)
+        self._cancel_btn.clicked.connect(self._on_cancel)
+        btn_row.addWidget(self._cancel_btn)
 
-        ok = QPushButton("确定")
-        ok.setFont(QFont(get_font_family(), 11, QFont.Bold))
-        ok.setFixedSize(90, 32)
-        ok.setCursor(Qt.PointingHandCursor)
-        ok.setStyleSheet(f"""
+        self._ok_btn = QPushButton("确定")
+        self._ok_btn.setFont(QFont(get_font_family(), 11, QFont.Bold))
+        self._ok_btn.setFixedSize(90, 32)
+        self._ok_btn.setCursor(Qt.PointingHandCursor)
+        self._ok_btn.setStyleSheet(f"""
             QPushButton {{ background: {BTN_PRIMARY_BG}; color: {BTN_PRIMARY_FG};
                           border: none; border-radius: 6px; }}
             QPushButton:hover {{ background: #334155; }}
         """)
-        ok.clicked.connect(self.accept)
-        btn_row.addWidget(ok)
+        self._ok_btn.clicked.connect(self._on_ok)
+        btn_row.addWidget(self._ok_btn)
         b.addLayout(btn_row)
 
         footer = QLabel("版本 1.2.1  |  开发者：Raynald+Minimax M2.7")
@@ -545,6 +587,60 @@ class SettingsDialog(QDialog):
         footer.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
         footer.setAlignment(Qt.AlignCenter)
         b.addWidget(footer)
+
+    def _on_font_changed(self, font_family: str) -> None:
+        self._font_family = font_family
+        if self._on_font_change_callback:
+            self._on_font_change_callback(font_family)
+
+    def _on_cancel(self) -> None:
+        if self._on_font_change_callback:
+            self._on_font_change_callback(self._original_font_family)
+        self.reject()
+
+    def _on_ok(self) -> None:
+        self.accept()
+
+    def get_colors(self) -> Dict[str, str]:
+        return dict(self._colors)
+
+    def get_thresholds(self) -> Dict[str, int]:
+        return {key: spin.value() for key, spin in self._spin_widgets.items()}
+
+    def get_font_family(self) -> str:
+        return self._font_family
+
+    def _on_threshold_change(self, key: str, lbl: QLabel, base_text: str, spin: QSpinBox) -> None:
+        lbl.setText(f"{base_text}")
+
+    def _make_color_btn(self, key: str) -> QPushButton:
+        btn = QPushButton()
+        btn.setFixedSize(90, 26)
+        btn.setCursor(Qt.PointingHandCursor)
+        hex_color = self._colors.get(key, "#94A3B8")
+        self._apply_btn_style(btn, hex_color)
+        btn.clicked.connect(
+            lambda _, k=key, b=btn: self._pick_color(k, b)
+        )
+        return btn
+
+    def _apply_btn_style(self, btn: QPushButton, hex_color: str) -> None:
+        btn.setStyleSheet(
+            f"QPushButton {{ background: {hex_color}; border: 1px solid #CBD5E1; "
+            f"border-radius: 4px; color: #FFFFFF; font-size: 11px; "
+            f"font-family: 'Microsoft YaHei'; }}"
+            f"QPushButton:hover {{ border-color: #94A3B8; }}"
+        )
+
+    def _pick_color(self, key: str, btn: QPushButton) -> None:
+        color = QColorDialog.getColor(
+            initial=QColor(self._colors.get(key, "#94A3B8")),
+            parent=self,
+        )
+        if color.isValid():
+            hex_color = color.name()
+            self._colors[key] = hex_color
+            self._apply_btn_style(btn, hex_color)
 
     def _add_fixed_row_to_grid(
         self,
@@ -617,47 +713,3 @@ class SettingsDialog(QDialog):
         self._color_widgets[key] = color_btn
 
         self._on_threshold_change(key, dyn_lbl, label_text, spin)
-
-    def _on_threshold_change(self, key: str, lbl: QLabel, base_text: str, spin: QSpinBox) -> None:
-        lbl.setText(f"{base_text}")
-
-    def _make_color_btn(self, key: str) -> QPushButton:
-        btn = QPushButton()
-        btn.setFixedSize(90, 26)
-        btn.setCursor(Qt.PointingHandCursor)
-        hex_color = self._colors.get(key, "#94A3B8")
-        self._apply_btn_style(btn, hex_color)
-        btn.clicked.connect(
-            lambda _, k=key, b=btn: self._pick_color(k, b)
-        )
-        return btn
-
-    def _apply_btn_style(self, btn: QPushButton, hex_color: str) -> None:
-        btn.setStyleSheet(
-            f"QPushButton {{ background: {hex_color}; border: 1px solid #CBD5E1; "
-            f"border-radius: 4px; color: #FFFFFF; font-size: 11px; "
-            f"font-family: 'Microsoft YaHei'; }}"
-            f"QPushButton:hover {{ border-color: #94A3B8; }}"
-        )
-
-    def _pick_color(self, key: str, btn: QPushButton) -> None:
-        color = QColorDialog.getColor(
-            initial=QColor(self._colors.get(key, "#94A3B8")),
-            parent=self,
-        )
-        if color.isValid():
-            hex_color = color.name()
-            self._colors[key] = hex_color
-            self._apply_btn_style(btn, hex_color)
-
-    def get_colors(self) -> Dict[str, str]:
-        return dict(self._colors)
-
-    def get_thresholds(self) -> Dict[str, int]:
-        return {key: spin.value() for key, spin in self._spin_widgets.items()}
-
-    def get_font_family(self) -> str:
-        return self._font_combo.currentText()
-
-    def _on_font_changed(self, font_family: str) -> None:
-        self._font_family = font_family
