@@ -76,7 +76,8 @@ class MainWindow(QMainWindow):
         self._update_undo_icon()
 
         self._file_watcher = QFileSystemWatcher()
-        self._file_watcher.addPath(DATA_FILE)
+        abs_path = os.path.abspath(DATA_FILE)
+        self._file_watcher.addPath(abs_path)
         self._file_watcher.fileChanged.connect(self._on_data_file_changed)
         self._watcher_enabled = True
         self._watcher_ignore_next = False
@@ -752,10 +753,7 @@ class MainWindow(QMainWindow):
         if self._watcher_ignore_next:
             self._watcher_ignore_next = False
             return
-        self._watcher_timer = QTimer()
-        self._watcher_timer.setSingleShot(True)
-        self._watcher_timer.timeout.connect(self._reload_data)
-        self._watcher_timer.start(100)
+        QTimer.singleShot(100, self._reload_data)
 
     def _reload_data(self) -> None:
         """重新加载数据并刷新界面"""

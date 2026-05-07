@@ -77,7 +77,7 @@ def save_data(data: Dict[str, Any]) -> None:
 
 # ─── CLI 操作函数 ─────────────────────────────────────────────────────────────
 
-def cli_add_task(quadrant: str, title: str, desc: str = "", deadline: str = "") -> Optional[str]:
+def cli_add_task(quadrant: str, title: str, deadline: str = "") -> Optional[str]:
     """添加任务，返回任务ID"""
     if quadrant not in [q["key"] for q in QUADS]:
         print(f"无效的象限: {quadrant}")
@@ -89,8 +89,6 @@ def cli_add_task(quadrant: str, title: str, desc: str = "", deadline: str = "") 
         "done": False,
         "deadline": deadline,
     }
-    if desc:
-        task["desc"] = desc
     data["tasks"][quadrant].append(task)
     save_data(data)
     print(f"任务已添加: {task['id']}")

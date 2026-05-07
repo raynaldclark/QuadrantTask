@@ -28,7 +28,6 @@ def run_cli():
     add_parser = subparsers.add_parser("add", help="添加任务")
     add_parser.add_argument("--quadrant", "-q", required=True, help="象限 (q1/q2/q3/q4)")
     add_parser.add_argument("--title", "-t", required=True, help="任务标题")
-    add_parser.add_argument("--desc", "-d", default="", help="任务描述")
     add_parser.add_argument("--deadline", "-l", default="", help="截止日期 (YYYY-MM-DD)")
 
     list_parser = subparsers.add_parser("list", help="列出任务")
@@ -51,7 +50,7 @@ def run_cli():
     args = parser.parse_args()
 
     if args.command == "add":
-        cli_add_task(args.quadrant, args.title, args.desc, args.deadline)
+        cli_add_task(args.quadrant, args.title, args.deadline)
     elif args.command == "list":
         cli_list_tasks(args.quadrant)
     elif args.command == "delete":
@@ -71,6 +70,20 @@ def run_cli():
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--cli":
         sys.argv.pop(1)
+        if len(sys.argv) > 1 and sys.argv[1] == "--help":
+            sys.argv.pop(1)
+            print("四象限任务板 CLI")
+            print()
+            print("用法: python main.py --cli <命令> [选项]")
+            print()
+            print("命令:")
+            print("  add       添加任务")
+            print("  list      列出任务")
+            print("  delete    删除任务")
+            print("  edit      编辑任务")
+            print()
+            print("输入 'python main.py --cli <命令> --help' 查看具体用法")
+            sys.exit(0)
         run_cli()
         sys.exit(0)
 
