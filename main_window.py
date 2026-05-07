@@ -184,7 +184,7 @@ class MainWindow(QMainWindow):
     # ─── 窗口图标 ──────────────────────────────────────────────────────────────
 
     def _set_window_icon(self) -> None:
-        """设置窗口图标"""
+        """设置窗口图标（支持 HiDPI）"""
         if getattr(sys, 'frozen', False):
             _base_dir = sys._MEIPASS
         else:
@@ -192,7 +192,8 @@ class MainWindow(QMainWindow):
         icon_path = os.path.join(_base_dir, "source", "icon.svg")
         if os.path.exists(icon_path):
             renderer = QSvgRenderer(icon_path)
-            pixmap = QPixmap(256, 256)
+            scale = self.devicePixelRatio()
+            pixmap = QPixmap(int(256 * scale), int(256 * scale))
             pixmap.fill(Qt.transparent)
             painter = QPainter(pixmap)
             renderer.render(painter)
@@ -200,7 +201,7 @@ class MainWindow(QMainWindow):
             self.setWindowIcon(QIcon(pixmap))
 
     def _svg_icon(self, filename: str, size: int = 20) -> QIcon:
-        """从 SVG 文件加载图标"""
+        """从 SVG 文件加载图标（支持 HiDPI）"""
         if getattr(sys, 'frozen', False):
             _base_dir = sys._MEIPASS
         else:
@@ -212,13 +213,29 @@ class MainWindow(QMainWindow):
                 vb = renderer.viewBox()
                 native_w = vb.width()
                 native_h = vb.height()
-                pixmap = QPixmap(int(native_w), int(native_h))
+
+                # 根据 DPI 缩放因子放大原生 pixmap，避免放大模糊
+                scale = self.devicePixelRatio()
+                render_w = int(native_w * scale)
+                render_h = int(native_h * scale)
+
+                pixmap = QPixmap(render_w, render_h)
                 pixmap.fill(Qt.transparent)
                 painter = QPainter(pixmap)
                 renderer.render(painter)
                 painter.end()
-                scaled = pixmap.scaled(size, size, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-                return QIcon(scaled)
+
+                # 如果渲染尺寸大于目标尺寸，先缩放一次确保清晰
+                if render_w > size or render_h > size:
+                    scaled = pixmap.scaled(
+                        int(size * scale), int(size * scale),
+                        Qt.IgnoreAspectRatio,
+                        Qt.SmoothTransformation
+                    )
+                    # 返回实际尺寸的 QIcon（DPI 适配）
+                    return QIcon(scaled)
+
+                return QIcon(pixmap)
         return QIcon()
 
     # ─── 工具栏 ────────────────────────────────────────────────────────────────
