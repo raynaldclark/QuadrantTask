@@ -102,4 +102,24 @@ pyinstaller QuadrantTask.spec
 
 ## 版本
 
-v1.0.0
+v1.2.0
+
+### v1.2.0 更新内容
+
+#### 代码重构
+- **类型提示**：全项目添加 Python Type Hinting，提升 IDE 支持
+- **命名规范**：遵循 PEP 8，变量/函数名更具语义
+- **撤销系统解耦**：QuadrantPanel 通过公开接口（`push_undo`/`find_task`）操作撤销，消除直接访问内部属性
+- **信号槽优化**：所有槽函数添加 `@Slot()` 装饰器，提升性能
+- **if/elif 修复**：修复 `_update_widget_fonts` 中的逻辑 bug
+
+#### DPI 自适应
+- 所有硬编码像素值改为 DPI 自适应
+- 新增 `_px()` / `_logical_to_physical()` 方法自动适配高分辨率屏幕
+- 支持 4K 显示器等 HiDPI 设备
+
+#### 架构改进
+- 引入 `UndoAction` 类封装动作类型常量，消除字符串硬编码
+- 使用 `TYPE_CHECKING` 避免循环导入
+- 公共方法添加 Docstrings 文档
+- 提取公共函数 `_build_title_section()`、`_create_toolbar_icon_btn()` 减少重复代码

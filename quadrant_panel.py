@@ -1,42 +1,49 @@
 # -*- coding: utf-8 -*-
 """QuadrantPanel：可接受拖拽的象限面板"""
 
-from PySide6.QtCore import Qt, QEvent, QTimer
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from PySide6.QtCore import QEvent, QObject, Qt, Slot
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 from PySide6.QtWidgets import QScrollArea
 
 from constants import get_font_family
 from task_card import TaskCard
 
+if TYPE_CHECKING:
+    from main_window import MainWindow
+
 
 class QuadrantPanel(QFrame):
     """单个象限区域：显示任务列表 + 接受拖拽放下。"""
 
-    def __init__(self, cfg, data, app, parent=None):
+    def __init__(
+        self,
+        cfg: Dict[str, str],
+        data: Dict[str, Any],
+        main_window: "MainWindow",
+        parent: Optional[QWidget] = None,
+    ) -> None:
         super().__init__(parent)
-        self.cfg  = cfg
+        self.cfg = cfg
         self.data = data
-        self.app  = app
+        self.main_window = main_window
         self.q_key = cfg["key"]
         self.show_done = False
+        self._highlighted = False
 
         self._setup_ui()
 
-    # ─── 公开 API ──────────────────────────────────────────────────────────────
-
-    def render_tasks(self):
+    def render_tasks(self) -> None:
         """重新渲染任务卡片列表。"""
-        # 清除现有卡片（保留 stretch item）
         while self.task_layout.count() > 1:
             item = self.task_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        tasks  = self.data["tasks"].get(self.q_key, [])
-        fs     = self.data["font_size"]
+        tasks = self.data["tasks"].get(self.q_key, [])
+        fs = self.data["font_size"]
         visible = [t for t in tasks if not t.get("done") or self.show_done]
 
         for task in visible:
@@ -53,10 +60,11 @@ class QuadrantPanel(QFrame):
             card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
             self.task_layout.insertWidget(self.task_layout.count() - 1, card)
 
-        self._update_count()
+        self.update_count()
+        from PySide6.QtCore import QTimer
         QTimer.singleShot(0, self._update_card_widths)
 
-    def _update_card_widths(self):
+    def _update_card_widths(self) -> None:
         scroll_width = self.scroll.viewport().width()
         if scroll_width > 50:
             new_width = scroll_width - 12
@@ -69,55 +77,58 @@ class QuadrantPanel(QFrame):
             self.task_container.updateGeometry()
             self.scroll.viewport().update()
 
-    def clear_done(self):
+    def clear_done(self) -> None:
+        """清空已完成任务"""
         self.data["tasks"][self.q_key] = [
             t for t in self.data["tasks"][self.q_key] if not t.get("done")
         ]
-        self.app.save()
+        self.main_window.save()
         self.render_tasks()
 
-    def clear_all(self):
+    def clear_all(self) -> None:
+        """清空所有任务"""
         self.data["tasks"][self.q_key] = []
-        self.app.save()
+        self.main_window.save()
         self.render_tasks()
 
-    # ─── 内部事件处理器 ────────────────────────────────────────────────────────
-
-    def _on_toggle(self, task):
-        self.app._undo_stack.append({
-            "type": "toggle",
-            "q_key": self.q_key,
-            "task_id": task["id"],
-            "old_state": not task.get("done", False)
-        })
-        self.app._update_undo_icon()
-        self.app.save()
-        self.render_tasks()
-
-    def _on_delete(self, task_id):
-        task = next((t for t in self.data["tasks"][self.q_key] if t["id"] == task_id), None)
-        if task:
-            self.data["tasks"][self.q_key] = [
-                t for t in self.data["tasks"][self.q_key] if t["id"] != task_id
-            ]
-            self.app._undo_stack.append({"type": "delete", "q_key": self.q_key, "task": task})
-            self.app._update_undo_icon()
-            self.app.save()
-            self.render_tasks()
-            self._update_count()
-
-    def _on_edit(self, task):
-        self.app._show_edit_dialog(task, self.q_key)
-
-    def _update_count(self):
+    def update_count(self) -> None:
+        """更新任务计数显示"""
         total = sum(
             1 for t in self.data["tasks"].get(self.q_key, []) if not t.get("done")
         )
         self.count_label.setText(str(total))
 
-    # ─── UI 构建 ───────────────────────────────────────────────────────────────
+    @Slot()
+    def _on_toggle(self, task: Dict[str, Any]) -> None:
+        """任务完成状态切换处理（通过公开接口操作撤销）"""
+        self.main_window.push_undo(
+            "toggle",
+            q_key=self.q_key,
+            task_id=task["id"],
+            old_state=not task.get("done", False)
+        )
+        self.main_window.save()
+        self.render_tasks()
 
-    def _setup_ui(self):
+    @Slot()
+    def _on_delete(self, task_id: str) -> None:
+        """删除任务处理（通过公开接口操作撤销）"""
+        task = self.main_window.find_task(self.q_key, task_id)
+        if task:
+            self.data["tasks"][self.q_key] = [
+                t for t in self.data["tasks"][self.q_key] if t["id"] != task_id
+            ]
+            self.main_window.push_undo("delete", q_key=self.q_key, task=task)
+            self.main_window.save()
+            self.render_tasks()
+            self.update_count()
+
+    @Slot()
+    def _on_edit(self, task: Dict[str, Any]) -> None:
+        """编辑任务处理"""
+        self.main_window.show_edit_dialog(task, self.q_key)
+
+    def _setup_ui(self) -> None:
         self.setAcceptDrops(True)
         self.setMinimumSize(300, 200)
 
@@ -129,7 +140,7 @@ class QuadrantPanel(QFrame):
         self._build_scroll_area(layout)
         self._apply_style()
 
-    def _build_header(self, parent_layout):
+    def _build_header(self, parent_layout: QVBoxLayout) -> None:
         header = QFrame()
         header.setFixedHeight(56)
         header.setStyleSheet(
@@ -160,7 +171,7 @@ class QuadrantPanel(QFrame):
 
         parent_layout.addWidget(header)
 
-    def _build_scroll_area(self, parent_layout):
+    def _build_scroll_area(self, parent_layout: QVBoxLayout) -> None:
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -182,24 +193,23 @@ class QuadrantPanel(QFrame):
         self._viewport_size = self.scroll.viewport().size()
         parent_layout.addWidget(self.scroll)
 
-    def _apply_style(self):
+    def _apply_style(self) -> None:
         self.setStyleSheet(
             f"background:{self.cfg['body_bg']};"
             f"border:1px solid {self.cfg['border']};"
         )
 
-    # ─── 拖拽事件 ──────────────────────────────────────────────────────────────
-
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         if obj is self.scroll.viewport() and event.type() == QEvent.Type.MouseButtonDblClick:
-            self.app._show_add_dialog(self.cfg["title"])
+            self.main_window.show_add_dialog(self.cfg["title"])
             return True
         if obj is self.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            from PySide6.QtCore import QTimer
             QTimer.singleShot(0, self._update_card_widths)
             return False
         return super().eventFilter(obj, event)
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event) -> None:
         mime = event.mimeData()
         if mime.hasFormat(TaskCard.MIME_TYPE):
             try:
@@ -213,10 +223,10 @@ class QuadrantPanel(QFrame):
                 pass
         event.ignore()
 
-    def dragLeaveEvent(self, event):
+    def dragLeaveEvent(self, event) -> None:
         self._set_highlight(False)
 
-    def dropEvent(self, event):
+    def dropEvent(self, event) -> None:
         self._set_highlight(False)
         mime = event.mimeData()
         if mime.hasFormat(TaskCard.MIME_TYPE):
@@ -224,14 +234,14 @@ class QuadrantPanel(QFrame):
                 raw = bytes(mime.data(TaskCard.MIME_TYPE)).decode("utf-8")
                 src_key, task_id = raw.split(":")
                 if src_key != self.q_key:
-                    self.app._move_task(src_key, self.q_key, task_id)
+                    self.main_window.move_task(src_key, self.q_key, task_id)
                     event.acceptProposedAction()
                     return
             except Exception:
                 pass
         event.ignore()
 
-    def _set_highlight(self, on):
+    def _set_highlight(self, on: bool) -> None:
         self._highlighted = on
         if on:
             self.setStyleSheet(
@@ -240,4 +250,4 @@ class QuadrantPanel(QFrame):
             )
         else:
             self._apply_style()
-        self.app._on_drag_target_changed(self.q_key if on else None)
+        self.main_window.on_drag_target_changed(self.q_key if on else None)

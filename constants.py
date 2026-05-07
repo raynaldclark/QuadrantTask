@@ -1,54 +1,85 @@
 # -*- coding: utf-8 -*-
 """全局常量：象限定义、颜色、字体等"""
 
+from dataclasses import dataclass
+from typing import Dict, List
+
+
 # ─── 字体 ────────────────────────────────────────────────────────────────────
-_FONT_FAMILY = "Microsoft YaHei"
+@dataclass
+class FontConfig:
+    family: str = "Microsoft YaHei"
+    size: int = 13
 
-def get_font_family():
-    return _FONT_FAMILY
+_font_config = FontConfig()
 
-def set_font_family(name):
-    global _FONT_FAMILY
-    _FONT_FAMILY = name
+
+def get_font_family() -> str:
+    return _font_config.family
+
+
+def set_font_family(name: str) -> None:
+    _font_config.family = name
+
+
+def get_font_size() -> int:
+    return _font_config.size
+
+
+def set_font_size(size: int) -> None:
+    _font_config.size = size
+
 
 # ─── 页面 / 工具栏背景 ────────────────────────────────────────────────────────
-BG_PAGE    = "#F1F5F9"
-BG_TOOLBAR = "#FFFFFF"
+BG_PAGE: str = "#F1F5F9"
+BG_TOOLBAR: str = "#FFFFFF"
 
 # ─── 卡片 ────────────────────────────────────────────────────────────────────
-CARD_BG     = "#FFFFFF"
-CARD_BORDER = "#E5E7EB"
+CARD_BG: str = "#FFFFFF"
+CARD_BORDER: str = "#E5E7EB"
 
 # ─── 文字颜色 ─────────────────────────────────────────────────────────────────
-TEXT_MAIN = "#1E293B"
-TEXT_SUB  = "#64748B"
-TEXT_DONE = "#94A3B8"
+TEXT_MAIN: str = "#1E293B"
+TEXT_SUB: str = "#64748B"
+TEXT_DONE: str = "#94A3B8"
 
 # ─── 主按钮 ──────────────────────────────────────────────────────────────────
-BTN_PRIMARY_BG = "#1E293B"
-BTN_PRIMARY_FG = "#FFFFFF"
+BTN_PRIMARY_BG: str = "#1E293B"
+BTN_PRIMARY_FG: str = "#FFFFFF"
 
 # ─── 截止日期颜色（默认值，可通过设置界面修改）───────────────────────────────
-DEADLINE_COLORS_DEFAULT = {
-    "overdue": "#EF4444",   # 过期（红色）
-    "today":   "#F97316",   # 今天（橙色）
-    "days3":   "#EAB308",   # 1-3天（黄色）
-    "days7":   "#22C55E",   # 4-7天（绿色）
-    "normal":  "#3B82F6",   # >7天（蓝色）
-    "none":    "#94A3B8",   # 无日期（灰色）
+DEADLINE_COLORS_DEFAULT: Dict[str, str] = {
+    "overdue": "#EF4444",
+    "today": "#F97316",
+    "days3": "#EAB308",
+    "days7": "#22C55E",
+    "normal": "#3B82F6",
+    "none": "#94A3B8",
 }
 
 # ─── 截止日期阈值（默认值，可通过设置界面修改）────────────────────────────────
-DEADLINE_THRESHOLDS_DEFAULT = {
-    "days3":  3,
-    "days7":  7,
+DEADLINE_THRESHOLDS_DEFAULT: Dict[str, int] = {
+    "days3": 3,
+    "days7": 7,
 }
 
 # ─── 截止日期阈值键的顺序（用于 SettingsDialog 渲染）─────────────────────────
-DEADLINE_THRESHOLD_KEYS = ["days3", "days7"]
+DEADLINE_THRESHOLD_KEYS: List[str] = ["days3", "days7"]
 
 # ─── 象限定义 ─────────────────────────────────────────────────────────────────
-QUADS = [
+@dataclass
+class QuadrantConfig:
+    key: str
+    title: str
+    subtitle: str
+    header_bg: str
+    header_fg: str
+    body_bg: str
+    border: str
+    tag_bg: str
+
+
+QUADS: List[Dict[str, str]] = [
     {
         "key": "q1",
         "title": "紧急且重要",
@@ -90,3 +121,11 @@ QUADS = [
         "tag_bg": "#D1D5DB",
     },
 ]
+
+
+def get_quadrant_config(key: str) -> Dict[str, str]:
+    """根据 key 获取象限配置"""
+    for q in QUADS:
+        if q["key"] == key:
+            return q
+    raise ValueError(f"Unknown quadrant key: {key}")

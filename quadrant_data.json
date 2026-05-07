@@ -1,6 +1,6 @@
 {
   "font_size": 15,
-  "geometry": "AdnQywADAAAAAAXDAAAB4QAACEIAAAS4AAAFwwAAAgAAAAhCAAAEuAAAAAAAAAAACgAAAAXDAAACAAAACEIAAAS4",
+  "geometry": "AdnQywADAAAAAAPgAAABogAABzMAAASFAAAD4AAAAcEAAAczAAAEhQAAAAAAAAAACgAAAAPgAAABwQAABzMAAASF",
   "deadline_colors": {
     "overdue": "#EF4444",
     "today": "#F97316",
@@ -71,5 +71,6 @@
       }
     ]
   },
-  "show_done": true
+  "show_done": false,
+  "font_family": "阿里巴巴普惠体 3.0 55 Regular"
 }
