@@ -11,6 +11,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
     QPushButton, QSizePolicy, QStyle, QVBoxLayout, QWidget, QMessageBox,
+    QApplication,
 )
 
 from constants import (
@@ -424,8 +425,65 @@ class MainWindow(QMainWindow):
 
     def _on_title_bar_mouse_move(self, event):
         if event.buttons() & Qt.LeftButton and self._title_bar.isVisible():
-            self.move(event.globalPosition().toPoint() - self._title_bar_drag_pos)
+            new_pos = event.globalPosition().toPoint() - self._title_bar_drag_pos
+            new_pos = self._snap_to_edges(new_pos)
+            self.move(new_pos)
             event.accept()
+
+    def _snap_to_edges(self, pos: QPoint) -> QPoint:
+        SNAP_THRESHOLD = 15
+        screens = QApplication.screens()
+        if not screens:
+            return pos
+
+        x, y = pos.x(), pos.y()
+        width, height = self.width(), self.height()
+        snapped = False
+        new_x, new_y = x, y
+
+        for screen in screens:
+            screen_geo = screen.geometry()
+            avail_geo = screen.availableGeometry()
+
+            if screen_geo.contains(QPoint(x + width // 2, y + height // 2)):
+                if x <= screen_geo.left() + SNAP_THRESHOLD:
+                    new_x = screen_geo.left()
+                    snapped = True
+                elif x + width >= screen_geo.right() - SNAP_THRESHOLD:
+                    new_x = screen_geo.right() - width
+                    snapped = True
+
+                if y <= avail_geo.top() + SNAP_THRESHOLD:
+                    new_y = avail_geo.top()
+                    snapped = True
+                elif y + height >= avail_geo.bottom() - SNAP_THRESHOLD:
+                    new_y = avail_geo.bottom() - height
+                    snapped = True
+
+                if snapped:
+                    break
+
+        if not snapped:
+            for screen in screens:
+                screen_geo = screen.geometry()
+                avail_geo = screen.availableGeometry()
+                center_x = x + width // 2
+                center_y = y + height // 2
+
+                if (screen_geo.left() <= center_x <= screen_geo.right() and
+                    screen_geo.top() <= center_y <= screen_geo.bottom()):
+                    if x <= screen_geo.left() + SNAP_THRESHOLD:
+                        new_x = screen_geo.left()
+                    elif x + width >= screen_geo.right() - SNAP_THRESHOLD:
+                        new_x = screen_geo.right() - width
+
+                    if y <= avail_geo.top() + SNAP_THRESHOLD:
+                        new_y = avail_geo.top()
+                    elif y + height >= avail_geo.bottom() - SNAP_THRESHOLD:
+                        new_y = avail_geo.bottom() - height
+                    break
+
+        return QPoint(new_x, new_y)
 
     def _on_title_bar_mouse_release(self, event):
         if event.button() == Qt.LeftButton:
@@ -497,6 +555,7 @@ class MainWindow(QMainWindow):
                 if event.buttons() & Qt.LeftButton:
                     delta = event.globalPosition().toPoint() - self._window_drag_start_pos
                     new_pos = self._window_drag_start_geo.topLeft() + delta
+                    new_pos = self._snap_to_edges(new_pos)
                     self.move(new_pos)
                 return super().eventFilter(obj, event)
 

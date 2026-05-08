@@ -2,7 +2,7 @@
 
 基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![四象限任务板](https://img.shields.io/badge/version-v1.3.0-blue)
+![四象限任务板](https://img.shields.io/badge/version-v1.3.1-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
@@ -66,7 +66,16 @@ python main.py
 
 ## 版本
 
-v1.3.0
+v1.3.1
+
+### v1.3.1 窗口边缘吸附功能
+
+- 拖拽窗口靠近屏幕边缘时自动吸附
+- 支持多屏幕环境，自动识别窗口所在屏幕
+- 吸附时考虑 Windows 任务栏高度，窗口不会遮挡任务栏
+- 支持标题栏拖拽和主界面拖拽两种方式
+
+### v1.3.0
 
 ### v1.3.0 GUI界面美化和任务卡片拖拽功能优化
 
