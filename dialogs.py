@@ -4,13 +4,47 @@
 import uuid
 from typing import Callable, Dict, List, Optional, Tuple, Any
 
-from PySide6.QtCore import Qt, QPoint, QRect
-from PySide6.QtGui import QColor, QFont, QIntValidator, QMouseEvent
+from PySide6.QtCore import Qt, QObject, QPoint, QRect, QEvent
+from PySide6.QtGui import QColor, QFont, QIntValidator, QMouseEvent, QFontDatabase
 from PySide6.QtWidgets import (
-    QColorDialog, QDialog, QFontComboBox, QFrame, QGridLayout,
+    QColorDialog, QFontComboBox, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox,
     QTextEdit, QVBoxLayout, QWidget,
 )
+
+
+class FontPreviewComboBox(QFontComboBox):
+    """支持鼠标悬停预览字体的字体选择框"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._hover_callback = None
+        self._view = None
+
+    def set_hover_callback(self, callback):
+        self._hover_callback = callback
+
+    def showPopup(self):
+        super().showPopup()
+        self._view = self.view()
+        self._view.setMouseTracking(True)
+        self._view.installEventFilter(self)
+
+    def hidePopup(self):
+        if self._view:
+            self._view.removeEventFilter(self)
+            self._view = None
+        super().hidePopup()
+
+    def eventFilter(self, obj, event):
+        if obj is self._view and event.type() == QEvent.MouseMove:
+            pos = event.pos()
+            index = self._view.indexAt(pos)
+            if index.isValid() and self._hover_callback:
+                font_family = index.data()
+                if font_family:
+                    self._hover_callback(str(font_family))
+        return super().eventFilter(obj, event)
 
 from constants import (
     BTN_PRIMARY_BG,
@@ -53,6 +87,41 @@ def _build_body(parent: QWidget) -> QWidget:
     body = QWidget(parent)
     body.setStyleSheet("background:#FFFFFF;")
     return body
+
+
+def _build_title_bar_light(title: str, parent: QDialog) -> QFrame:
+    frame = QFrame(parent)
+    frame.setStyleSheet("background:#DBEAFE; border-width: 0 0 2px 0; border-style: solid; border-color: #BFDBFE;")
+    frame.setFixedHeight(46)
+    lay = QHBoxLayout(frame)
+    lay.setContentsMargins(16, 0, 12, 0)
+
+    bar = DraggableTitleBar(frame)
+    bar.setCursor(Qt.SizeAllCursor)
+    bar.setStyleSheet("background:transparent; border:none;")
+    bar.setFixedHeight(44)
+    bar_lay = QHBoxLayout(bar)
+    bar_lay.setContentsMargins(0, 0, 0, 0)
+
+    lbl = QLabel(title, bar)
+    lbl.setFont(QFont(get_font_family(), 15, QFont.Bold))
+    lbl.setStyleSheet("color:#1E40AF; background:transparent; border:none;")
+    lbl.setObjectName("TitleLabel")
+    bar_lay.addWidget(lbl)
+    bar_lay.addStretch()
+
+    close_btn = QPushButton("✕", bar)
+    close_btn.setObjectName("CloseButton")
+    close_btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #1E40AF; border: none; "
+        "font-size: 16px; padding: 4px 8px; }"
+        "QPushButton:hover { color: #3B82F6; }"
+    )
+    close_btn.clicked.connect(parent.reject)
+    bar_lay.addWidget(close_btn)
+
+    lay.addWidget(bar)
+    return frame
 
 
 class DraggableTitleBar(QFrame):
@@ -463,7 +532,7 @@ class SettingsDialog(QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint | Qt.WindowCloseButtonHint)
-        self.setStyleSheet("QDialog { border: 1px solid #000000; }")
+        self.setStyleSheet("QDialog { background: #FFFFFF; }")
 
         self._on_font_change_callback = on_font_change
         self._on_font_size_change_callback = on_font_size_change
@@ -481,12 +550,17 @@ class SettingsDialog(QDialog):
         self.setModal(True)
         self.setFixedSize(440, 560)
 
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(1, 1, 1, 1)
-        outer.setSpacing(0)
-        outer.addWidget(_build_title_bar("设置", self))
+        border_frame = QFrame(self)
+        border_frame.setObjectName("dialog_border")
+        border_frame.setStyleSheet("QFrame#dialog_border { background: #FFFFFF; border: 2px solid #BFDBFE; }")
+        border_frame.setGeometry(0, 0, 440, 560)
 
-        body = _build_body(self)
+        outer = QVBoxLayout(border_frame)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(_build_title_bar_light("设置", self))
+
+        body = _build_body(border_frame)
         b = QVBoxLayout(body)
         b.setContentsMargins(20, 8, 20, 16)
         outer.addWidget(body)
@@ -496,7 +570,7 @@ class SettingsDialog(QDialog):
 
         font_h = QLabel("字体")
         font_h.setFont(QFont(get_font_family(), self._fs, QFont.Bold))
-        font_h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
+        font_h.setStyleSheet("color:#1E40AF; background:transparent;")
         font_section.addWidget(font_h)
         font_section.addStretch()
 
@@ -543,10 +617,11 @@ class SettingsDialog(QDialog):
         font_row.addWidget(font_lbl)
         font_row.addStretch()
 
-        self._font_combo = QFontComboBox()
+        self._font_combo = FontPreviewComboBox()
         self._font_combo.setFontFilters(QFontComboBox.FontFilters(0x1))
         self._font_combo.setCurrentText(self._font_family)
         self._font_combo.currentTextChanged.connect(self._on_font_changed)
+        self._font_combo.set_hover_callback(self._on_font_highlighted)
         self._font_combo.setStyleSheet(f"""
             QFontComboBox {{ border: 1px solid #000000; border-radius: 4px;
                            padding: 4px 8px; color: {TEXT_MAIN}; background: #FFFFFF; }}
@@ -558,7 +633,7 @@ class SettingsDialog(QDialog):
 
         h = QLabel("截止日期颜色与阈值规则")
         h.setFont(QFont(get_font_family(), self._fs, QFont.Bold))
-        h.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; margin-bottom: 8px;")
+        h.setStyleSheet("color:#1E40AF; background:transparent; margin-bottom: 8px;")
         b.addWidget(h)
 
         self._spin_widgets: Dict[str, QLineEdit] = {}
@@ -606,7 +681,7 @@ class SettingsDialog(QDialog):
         self._cancel_btn.setCursor(Qt.PointingHandCursor)
         self._cancel_btn.setStyleSheet(f"""
             QPushButton {{ background: #F1F5F9; color: {TEXT_SUB};
-                          border: none; border-radius: 6px; }}
+                          border: 2px solid #BFDBFE; }}
             QPushButton:hover {{ background: #E2E8F0; }}
         """)
         self._cancel_btn.clicked.connect(self._on_cancel)
@@ -617,15 +692,15 @@ class SettingsDialog(QDialog):
         self._ok_btn.setFixedSize(90, 32)
         self._ok_btn.setCursor(Qt.PointingHandCursor)
         self._ok_btn.setStyleSheet(f"""
-            QPushButton {{ background: {BTN_PRIMARY_BG}; color: {BTN_PRIMARY_FG};
-                          border: none; border-radius: 6px; }}
-            QPushButton:hover {{ background: #334155; }}
+            QPushButton {{ background: #DBEAFE; color: #1E40AF;
+                          border: 2px solid #BFDBFE; }}
+            QPushButton:hover {{ background: #BFDBFE; }}
         """)
         self._ok_btn.clicked.connect(self._on_ok)
         btn_row.addWidget(self._ok_btn)
         b.addLayout(btn_row)
 
-        footer = QLabel("版本 1.2.2  |  开发者：Raynald+Minimax M2.7")
+        footer = QLabel("版本 1.2.4  |  开发者：Raynald")
         footer.setFont(QFont(get_font_family(), self._fs - 4))
         footer.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
         footer.setAlignment(Qt.AlignCenter)
@@ -633,6 +708,11 @@ class SettingsDialog(QDialog):
 
     def _on_font_changed(self, font_family: str) -> None:
         self._font_family = font_family
+        if self._on_font_change_callback:
+            self._on_font_change_callback(font_family)
+
+    def _on_font_highlighted(self, font_family: str) -> None:
+        """鼠标悬停在字体下拉框时实时预览字体"""
         if self._on_font_change_callback:
             self._on_font_change_callback(font_family)
 
@@ -648,6 +728,7 @@ class SettingsDialog(QDialog):
         self.reject()
 
     def _on_ok(self) -> None:
+        self._font_family = self._font_combo.currentText()
         self.accept()
 
     def get_colors(self) -> Dict[str, str]:

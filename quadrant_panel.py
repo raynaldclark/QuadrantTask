@@ -218,13 +218,21 @@ class QuadrantPanel(QFrame):
         if mime.hasFormat(TaskCard.MIME_TYPE):
             try:
                 raw = bytes(mime.data(TaskCard.MIME_TYPE)).decode("utf-8")
-                src_key = raw.split(":")[0]
-                if src_key != self.q_key:
-                    self._set_highlight(True)
-                    event.acceptProposedAction()
-                    return
+                src_key, task_id = raw.split(":")
+                self._drag_task_id = task_id
+                self._src_key = src_key
+                self._set_highlight(True)
+                event.acceptProposedAction()
+                return
             except Exception:
                 pass
+        event.ignore()
+
+    def dragMoveEvent(self, event) -> None:
+        mime = event.mimeData()
+        if mime.hasFormat(TaskCard.MIME_TYPE):
+            event.acceptProposedAction()
+            return
         event.ignore()
 
     def dragLeaveEvent(self, event) -> None:
@@ -237,13 +245,44 @@ class QuadrantPanel(QFrame):
             try:
                 raw = bytes(mime.data(TaskCard.MIME_TYPE)).decode("utf-8")
                 src_key, task_id = raw.split(":")
-                if src_key != self.q_key:
-                    self.main_window.move_task(src_key, self.q_key, task_id)
-                    event.acceptProposedAction()
-                    return
+
+                if src_key == self.q_key:
+                    viewport_y = event.pos().y()
+                    scroll_offset = self.scroll.verticalScrollBar().value()
+                    DRAG_OFFSET = 60
+                    local_y = viewport_y + scroll_offset - DRAG_OFFSET
+                    drop_index = self._calculate_drop_index(local_y)
+                    max_index = self.task_layout.count() - 2
+                    drop_index = min(drop_index, max_index)
+                    drop_index = max(drop_index, 0)
+                    self.main_window.reorder_task(src_key, task_id, drop_index)
+                else:
+                    viewport_y = event.pos().y()
+                    scroll_offset = self.scroll.verticalScrollBar().value()
+                    DRAG_OFFSET = 60
+                    local_y = viewport_y + scroll_offset - DRAG_OFFSET
+                    drop_index = self._calculate_drop_index(local_y)
+                    max_index = self.task_layout.count() - 2
+                    drop_index = min(drop_index, max_index)
+                    drop_index = max(drop_index, 0)
+                    self.main_window.move_task_to_index(src_key, self.q_key, task_id, drop_index)
+                event.acceptProposedAction()
+                return
             except Exception:
                 pass
         event.ignore()
+
+    def _calculate_drop_index(self, y: int) -> int:
+        index = 0
+        count = self.task_layout.count()
+        for i in range(count - 1):
+            item = self.task_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                mid_y = widget.y() + widget.height() // 2
+                if y > mid_y:
+                    index = i + 1
+        return index
 
     def _set_highlight(self, on: bool) -> None:
         self._highlighted = on

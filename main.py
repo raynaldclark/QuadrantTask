@@ -22,30 +22,50 @@ from data import (
 
 
 def run_cli():
-    parser = argparse.ArgumentParser(description="四象限任务板 CLI")
-    subparsers = parser.add_subparsers(dest="command", help="子命令")
+    parser = argparse.ArgumentParser(
+        description="四象限任务板 CLI - 命令行任务管理工具",
+        epilog="象限说明: q1=紧急且重要, q2=重要不紧急, q3=紧急不重要, q4=不紧急不重要",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subparsers = parser.add_subparsers(dest="command", help="可用命令")
 
-    add_parser = subparsers.add_parser("add", help="添加任务")
-    add_parser.add_argument("--quadrant", "-q", required=True, help="象限 (q1/q2/q3/q4)")
-    add_parser.add_argument("--title", "-t", required=True, help="任务标题")
-    add_parser.add_argument("--deadline", "-l", default="", help="截止日期 (YYYY-MM-DD)")
+    add_parser = subparsers.add_parser(
+        "add",
+        help="添加新任务到指定象限",
+        description="创建新任务，需要指定所属象限和标题，可选添加截止日期",
+    )
+    add_parser.add_argument("--quadrant", "-q", required=True, help="象限 (q1/q2/q3/q4)，必填")
+    add_parser.add_argument("--title", "-t", required=True, help="任务标题，必填")
+    add_parser.add_argument("--deadline", "-l", default="", help="截止日期，格式: YYYY-MM-DD，可选")
 
-    list_parser = subparsers.add_parser("list", help="列出任务")
-    list_parser.add_argument("--quadrant", "-q", default="", help="象限 (q1/q2/q3/q4)")
+    list_parser = subparsers.add_parser(
+        "list",
+        help="列出任务",
+        description="查看任务列表，可按象限筛选",
+    )
+    list_parser.add_argument("--quadrant", "-q", default="", help="象限 (q1/q2/q3/q4)，可选，不指定则列出全部")
 
-    delete_parser = subparsers.add_parser("delete", help="删除任务")
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="删除任务",
+        description="删除单个或批量删除任务",
+    )
     delete_group = delete_parser.add_mutually_exclusive_group(required=True)
-    delete_group.add_argument("--id", "-i", help="任务ID")
+    delete_group.add_argument("--id", "-i", help="任务ID，删除指定任务")
     delete_group.add_argument("--all", "-a", action="store_true", help="删除所有任务")
-    delete_parser.add_argument("--quadrant", "-q", default="", help="象限 (q1/q2/q3/q4)")
+    delete_parser.add_argument("--quadrant", "-q", default="", help="象限 (q1/q2/q3/q4)，配合 --all 使用")
 
-    edit_parser = subparsers.add_parser("edit", help="编辑任务")
-    edit_parser.add_argument("--id", "-i", required=True, help="任务ID")
+    edit_parser = subparsers.add_parser(
+        "edit",
+        help="编辑任务",
+        description="修改任务属性：标题、截止日期、象限、完成状态",
+    )
+    edit_parser.add_argument("--id", "-i", required=True, help="任务ID，必填")
     edit_parser.add_argument("--title", "-t", default="", help="新标题")
     edit_parser.add_argument("--desc", "-d", default="", help="新描述")
-    edit_parser.add_argument("--deadline", "-l", default="", help="新截止日期")
-    edit_parser.add_argument("--done", choices=["true", "false"], help="完成状态")
-    edit_parser.add_argument("--quadrant", "-q", default="", help="移动到新象限")
+    edit_parser.add_argument("--deadline", "-l", default="", help="新截止日期，格式: YYYY-MM-DD")
+    edit_parser.add_argument("--done", choices=["true", "false"], help="完成状态: true=已完成, false=未完成")
+    edit_parser.add_argument("--quadrant", "-q", default="", help="移动任务到新象限")
 
     args = parser.parse_args()
 

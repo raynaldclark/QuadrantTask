@@ -5,11 +5,11 @@ import os
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from PySide6.QtCore import QByteArray, QFileSystemWatcher, QRect, QSize, Qt, Slot, QTimer
-from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter
+from PySide6.QtCore import QByteArray, QEvent, QFileSystemWatcher, QPoint, QRect, QSize, Qt, Slot, QTimer
+from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QCursor
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QCheckBox, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
+    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
     QPushButton, QSizePolicy, QStyle, QVBoxLayout, QWidget, QMessageBox,
 )
 
@@ -54,7 +54,20 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("四象限任务板")
         self._set_window_icon()
         self.setMinimumSize(640, 600)
+        self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
         self.setStyleSheet(f"background:{BG_PAGE};")
+
+        self._title_bar = self._build_frameless_title_bar()
+        self._title_bar.setFixedHeight(0)
+        self._title_bar.setMouseTracking(True)
+
+        self._resize_edge = 0
+        self._resize_start_pos = QPoint()
+        self._resize_start_geo = QRect()
+
+        self._window_drag = False
+        self._window_drag_start_pos = QPoint()
+        self._window_drag_start_geo = QRect()
 
         saved_font = self.data.get("font_family", "Microsoft YaHei")
         _set_font_family(saved_font)
@@ -85,6 +98,13 @@ class MainWindow(QMainWindow):
         self._watcher_ignore_next = False
 
         self._is_initializing = False
+        self.setMouseTracking(True)
+        self.setCursor(Qt.ArrowCursor)
+        self.installEventFilter(self)
+
+        self._mouse_check_timer = QTimer(self)
+        self._mouse_check_timer.timeout.connect(self._check_mouse_position)
+        self._mouse_check_timer.start(50)
 
     def save(self) -> None:
         """保存数据到磁盘"""
@@ -289,16 +309,15 @@ class MainWindow(QMainWindow):
 
     # ─── 工具栏 ────────────────────────────────────────────────────────────────
 
-    def _build_toolbar(self) -> None:
+    def _build_toolbar(self) -> QWidget:
         """构建工具栏"""
-        toolbar = QWidget()
-        toolbar.setFixedHeight(64)
-        toolbar.setStyleSheet(
-            f"background:{BG_TOOLBAR}; border-bottom: 1px solid #E2E8F0;"
+        self._toolbar = QWidget()
+        self._toolbar.setFixedHeight(0)
+        self._toolbar.setStyleSheet(
+            "background: #FFFFFF;"
         )
-        self.setMenuWidget(toolbar)
 
-        layout = QHBoxLayout(toolbar)
+        layout = QHBoxLayout(self._toolbar)
         layout.setContentsMargins(16, 0, 16, 0)
 
         layout.addLayout(self._build_title_section())
@@ -325,17 +344,233 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._create_toolbar_icon_btn("delall.svg", "清空全部", self._clear_all))
         layout.addWidget(self._create_toolbar_icon_btn("add.svg", "添加任务", self._show_add_dialog))
 
+    def _build_frameless_title_bar(self) -> QFrame:
+        """构建无边框窗口的标题栏（鼠标悬停显示）"""
+        bar = QFrame()
+        bar.setFixedHeight(32)
+        bar.setStyleSheet("""
+            QFrame {
+                background: #E6E6E6;
+                border: none;
+            }
+        """)
+
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(8, 0, 0, 0)
+
+        title_label = QLabel("四象限任务板-艾森豪威尔矩阵工具")
+        title_label.setFont(QFont(get_font_family(), 12))
+        title_label.setStyleSheet("color: #000000; background: transparent; border: none;")
+        layout.addWidget(title_label)
+        layout.addStretch()
+
+        self._minimize_btn = QPushButton()
+        self._minimize_btn.setFixedSize(46, 32)
+        self._minimize_btn.setIcon(self._svg_icon("minimize.svg", 16))
+        self._minimize_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background: rgba(0, 0, 0, 0.1);
+            }
+        """)
+        self._minimize_btn.clicked.connect(self.showMinimized)
+
+        self._maximize_btn = QPushButton()
+        self._maximize_btn.setFixedSize(46, 32)
+        self._maximize_btn.setIcon(self._svg_icon("maximize.svg", 16))
+        self._maximize_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background: rgba(0, 0, 0, 0.1);
+            }
+        """)
+        self._maximize_btn.clicked.connect(self._toggle_maximize)
+
+        self._close_btn = QPushButton()
+        self._close_btn.setFixedSize(46, 32)
+        self._close_btn.setIcon(self._svg_icon("close.svg", 16))
+        self._close_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background: #E81123;
+            }
+        """)
+        self._close_btn.clicked.connect(self.close)
+
+        layout.addWidget(self._minimize_btn)
+        layout.addWidget(self._maximize_btn)
+        layout.addWidget(self._close_btn)
+
+        self._title_bar_drag_pos = QPoint()
+        bar.mousePressEvent = lambda e: self._on_title_bar_mouse_press(e)
+        bar.mouseMoveEvent = lambda e: self._on_title_bar_mouse_move(e)
+        bar.mouseReleaseEvent = lambda e: self._on_title_bar_mouse_release(e)
+
+        return bar
+
+    def _on_title_bar_mouse_press(self, event):
+        if event.button() == Qt.LeftButton:
+            self._title_bar_drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def _on_title_bar_mouse_move(self, event):
+        if event.buttons() & Qt.LeftButton and self._title_bar.isVisible():
+            self.move(event.globalPosition().toPoint() - self._title_bar_drag_pos)
+            event.accept()
+
+    def _on_title_bar_mouse_release(self, event):
+        if event.button() == Qt.LeftButton:
+            self._title_bar_drag_pos = QPoint()
+            event.accept()
+
+    def _toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+            self._maximize_btn.setIcon(self._svg_icon("maximize.svg", 16))
+        else:
+            self.showMaximized()
+            self._maximize_btn.setIcon(self._svg_icon("restore.svg", 16))
+
+    def _show_title_bar(self):
+        self._title_bar.setFixedHeight(32)
+        self._title_bar.raise_()
+        self._toolbar.setFixedHeight(64)
+
+    def _hide_title_bar(self):
+        self._title_bar.setFixedHeight(0)
+        self._toolbar.setFixedHeight(0)
+
+    def _check_mouse_position(self):
+        if self._resize_edge:
+            return
+        pos = QCursor.pos()
+        frame_geo = self.frameGeometry()
+        hover_rect = QRect(frame_geo.topLeft(), QSize(self.width(), 12))
+        title_bar_rect = QRect(frame_geo.topLeft(), QSize(self.width(), 96))
+
+        if self._title_bar.height() > 0:
+            if not title_bar_rect.contains(pos):
+                self._hide_title_bar()
+                self.setCursor(Qt.ArrowCursor)
+        else:
+            if hover_rect.contains(pos):
+                self._show_title_bar()
+
+        local_pos = self.mapFromGlobal(pos)
+        edge = self._get_edge(local_pos)
+        if edge:
+            cursors = {
+                2: Qt.SizeVerCursor,
+                8: Qt.SizeHorCursor,
+                6: Qt.SizeBDiagCursor,
+                10: Qt.SizeFDiagCursor,
+            }
+            self.setCursor(cursors.get(edge, Qt.ArrowCursor))
+        elif self._title_bar.height() == 0:
+            self.setCursor(Qt.ArrowCursor)
+
+    def eventFilter(self, obj, event):
+        et = event.type()
+
+        if et == QEvent.MouseMove:
+            pos = event.pos()
+
+            if self._title_bar.height() > 0 and pos.y() <= 96:
+                self._hide_title_bar()
+                return super().eventFilter(obj, event)
+
+            if self._resize_edge:
+                if event.buttons() & Qt.LeftButton:
+                    self._do_resize(event.globalPosition().toPoint())
+                return super().eventFilter(obj, event)
+
+            if self._window_drag:
+                if event.buttons() & Qt.LeftButton:
+                    delta = event.globalPosition().toPoint() - self._window_drag_start_pos
+                    new_pos = self._window_drag_start_geo.topLeft() + delta
+                    self.move(new_pos)
+                return super().eventFilter(obj, event)
+
+            edge = self._get_edge(pos)
+            if edge:
+                cursors = {
+                    2: Qt.SizeVerCursor,
+                    8: Qt.SizeHorCursor,
+                    6: Qt.SizeBDiagCursor,
+                    10: Qt.SizeFDiagCursor,
+                }
+                self.setCursor(cursors.get(edge, Qt.ArrowCursor))
+            else:
+                self.setCursor(Qt.ArrowCursor)
+            return super().eventFilter(obj, event)
+
+        elif et == QEvent.MouseButtonPress:
+            if event.button() == Qt.LeftButton:
+                pos = event.pos()
+                edge = self._get_edge(pos)
+                if edge:
+                    self._resize_edge = edge
+                    self._resize_start_pos = event.globalPosition().toPoint()
+                    self._resize_start_geo = self.geometry()
+                    return True
+                elif self._title_bar.height() == 0 or pos.y() > self._title_bar.height() + self._toolbar.height():
+                    self._window_drag = True
+                    self._window_drag_start_pos = event.globalPosition().toPoint()
+                    self._window_drag_start_geo = self.geometry()
+                    return True
+
+        elif et == QEvent.MouseButtonRelease:
+            self._resize_edge = 0
+            self._window_drag = False
+            return True
+
+        return super().eventFilter(obj, event)
+
+    def _get_edge(self, pos):
+        edge = 0
+        if pos.y() > self.height() - 8:
+            edge |= 2
+            if pos.x() < 8:
+                edge |= 4
+            elif pos.x() > self.width() - 8:
+                edge |= 8
+        elif pos.x() > self.width() - 8:
+            edge |= 8
+        return edge
+
+    def _do_resize(self, global_pos):
+        dx = global_pos.x() - self._resize_start_pos.x()
+        dy = global_pos.y() - self._resize_start_pos.y()
+        g = self._resize_start_geo
+        min_w, min_h = self.minimumSize().width(), self.minimumSize().height()
+
+        new_x, new_y, new_w, new_h = g.x(), g.y(), g.width(), g.height()
+
+        if self._resize_edge & 2:
+            new_h = max(min_h, g.height() + dy)
+        if self._resize_edge & 4:
+            new_w = max(min_w, g.width() - dx)
+            new_x = g.x() + g.width() - new_w
+        if self._resize_edge & 8:
+            new_w = max(min_w, g.width() + dx)
+
+        self.setGeometry(new_x, new_y, new_w, new_h)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
     def _build_title_section(self) -> QVBoxLayout:
         """构建标题区域"""
         title_col = QVBoxLayout()
-        main_t = QLabel("四象限任务板")
-        main_t.setFont(QFont(get_font_family(), 16, QFont.Bold))
-        main_t.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent; border:none;")
-        title_col.addWidget(main_t)
-        sub_t = QLabel("艾森豪威尔矩阵")
-        sub_t.setFont(QFont(get_font_family(), 10))
-        sub_t.setStyleSheet(f"color:{TEXT_SUB}; background:transparent; border:none;")
-        title_col.addWidget(sub_t)
         return title_col
 
     def _create_toolbar_icon_btn(
@@ -500,9 +735,22 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         central.setStyleSheet(f"background:{BG_PAGE};")
 
-        self._board_layout = QGridLayout(central)
-        self._board_layout.setContentsMargins(16, 12, 16, 12)
-        self._board_layout.setSpacing(8)
+        main_vbox = QVBoxLayout(central)
+        main_vbox.setContentsMargins(0, 0, 0, 0)
+        main_vbox.setSpacing(0)
+
+        self._title_bar.setFixedHeight(0)
+        main_vbox.addWidget(self._title_bar, 0, Qt.AlignTop)
+
+        self._toolbar.setFixedHeight(0)
+        main_vbox.addWidget(self._toolbar, 0, Qt.AlignTop)
+
+        board_widget = QWidget()
+        main_vbox.addWidget(board_widget, 1)
+
+        self._board_layout = QGridLayout(board_widget)
+        self._board_layout.setContentsMargins(0, 0, 0, 0)
+        self._board_layout.setSpacing(0)
         self._board_layout.setColumnStretch(0, 1)
         self._board_layout.setColumnStretch(1, 1)
 
@@ -640,6 +888,58 @@ class MainWindow(QMainWindow):
         self.panels[src_key].render_tasks()
         self.panels[tgt_key].render_tasks()
 
+    def move_task_to_index(self, src_key: str, tgt_key: str, task_id: str, tgt_index: int) -> None:
+        """移动任务到目标象限的指定位置"""
+        src_tasks = self.data["tasks"].get(src_key, [])
+        task_data = None
+        for t in src_tasks:
+            if t["id"] == task_id:
+                task_data = t
+                break
+        if not task_data:
+            return
+
+        self.push_undo(
+            UndoAction.MOVE,
+            task=task_data,
+            from_q_key=src_key,
+            to_q_key=tgt_key
+        )
+        self.data["tasks"][src_key] = [t for t in src_tasks if t["id"] != task_id]
+        if tgt_key not in self.data["tasks"]:
+            self.data["tasks"][tgt_key] = []
+        tgt_tasks = self.data["tasks"][tgt_key]
+        tgt_index = max(0, min(tgt_index, len(tgt_tasks)))
+        tgt_tasks.insert(tgt_index, task_data)
+        self.save()
+
+        self.panels[src_key].render_tasks()
+        self.panels[tgt_key].render_tasks()
+
+    def reorder_task(self, q_key: str, task_id: str, new_index: int) -> None:
+        """在同一象限内重排任务（公开接口）"""
+        tasks = self.data["tasks"].get(q_key, [])
+        task_data = None
+        old_index = -1
+        for i, t in enumerate(tasks):
+            if t["id"] == task_id:
+                task_data = t
+                old_index = i
+                break
+        if not task_data or old_index == -1:
+            return
+        if new_index < 0 or new_index >= len(tasks):
+            return
+        if old_index == new_index:
+            return
+
+        if new_index > old_index:
+            new_index -= 1
+        self.data["tasks"][q_key].pop(old_index)
+        self.data["tasks"][q_key].insert(new_index, task_data)
+        self.panels[q_key].render_tasks()
+        QTimer.singleShot(100, lambda: self._delayed_save())
+
     def on_drag_target_changed(self, quad_key: Optional[str]) -> None:
         """拖拽目标象限改变回调（公开接口）"""
         self._drag_target_key = quad_key
@@ -773,6 +1073,11 @@ class MainWindow(QMainWindow):
 
     def save(self) -> None:
         """保存数据到磁盘"""
+        self._watcher_ignore_next = True
+        save_data(self.data)
+
+    def _delayed_save(self) -> None:
+        """延迟保存，避开文件监听器触发"""
         self._watcher_ignore_next = True
         save_data(self.data)
 

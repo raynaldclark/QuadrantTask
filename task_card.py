@@ -11,7 +11,7 @@ from PySide6.QtGui import (
     QColor, QCursor, QDrag, QFont, QFontMetrics, QPainter, QPen, QPixmap,
 )
 from PySide6.QtSvg import QSvgRenderer
-from PySide6.QtWidgets import QApplication, QSizePolicy, QWidget
+from PySide6.QtWidgets import QApplication, QSizePolicy, QWidget, QLabel, QFrame
 
 from constants import CARD_BG, CARD_BORDER, TEXT_DONE, TEXT_MAIN, get_font_family
 
@@ -71,6 +71,13 @@ class TaskCard(QWidget):
         self._action_timer.setSingleShot(True)
         self._action_timer.timeout.connect(self._show_action_bar)
 
+        self._text_label = QLabel(self)
+        self._text_label.setTextFormat(Qt.PlainText)
+        self._text_label.setWordWrap(True)
+        self._text_label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._text_label.setFrameShape(QFrame.NoFrame)
+        self._text_label.setStyleSheet("QLabel { border: none; background: transparent; }")
+
     def _logical_to_physical(self, logical: int) -> int:
         """将逻辑像素转换为物理像素（考虑 DPI 缩放）"""
         return int(logical * self.devicePixelRatio())
@@ -78,6 +85,27 @@ class TaskCard(QWidget):
     def _px(self, logical: int) -> int:
         """简化的物理像素转换"""
         return self._logical_to_physical(logical)
+
+    def _update_text_label(self) -> None:
+        checked = self.task.get("done", False)
+        font = QFont(get_font_family(), self.font_size)
+        if checked:
+            font.setStrikeOut(True)
+        self._text_label.setFont(font)
+        self._text_label.setStyleSheet(
+            f"QLabel {{ color: {'#94A3B8' if checked else '#1E293B'}; background: transparent; border: none; }}"
+        )
+        self._text_label.setText(self.task.get("text", ""))
+
+        chk_right = self._checkbox_rect().right()
+        fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
+        dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
+        text_right = self.width() - dl_w - 4
+        text_w = text_right - chk_right + 2
+        if text_w < 20:
+            text_w = 20
+        text_x = chk_right + 4
+        self._text_label.setGeometry(text_x, 0, text_w, self.height())
 
     def task_id(self) -> str:
         return self.task["id"]
@@ -92,7 +120,12 @@ class TaskCard(QWidget):
 
     def update_font(self, font_size: int) -> None:
         self.font_size = font_size
+        self._update_text_label()
         self.update()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_text_label()
 
     @staticmethod
     def deadline_color(
@@ -142,30 +175,10 @@ class TaskCard(QWidget):
         checked = self.task.get("done", False)
         self._draw_checkbox(painter, chk_rect, checked)
 
-        font = QFont(get_font_family(), self.font_size)
-        if checked:
-            font.setStrikeOut(True)
-        painter.setFont(font)
-        text_color = QColor(TEXT_DONE) if checked else QColor(TEXT_MAIN)
-        painter.setPen(text_color)
+        self._update_text_label()
 
-        fm = QFontMetrics(font)
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
-        text_right = self.width() - dl_w - 4
-        text_w = text_right - chk_rect.right() - 4
-        if text_w < 20:
-            text_w = 20
-        br_rect = QRect(0, 0, text_w, 1677216)
-        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
-        card_h = max(40, br.height() + 10)
-
-        text_rect = QRect(chk_rect.right() + 4, 0, text_w, card_h)
-        painter.drawText(
-            text_rect.adjusted(4, 0, 0, 0),
-            Qt.AlignVCenter | Qt.TextWordWrap,
-            self.task.get("text", ""),
-        )
 
         dl = self.task.get("deadline", "")
         if dl:
@@ -322,29 +335,40 @@ class TaskCard(QWidget):
         if w < 200:
             w = 200
         font = QFont(get_font_family(), self.font_size)
-        fm = QFontMetrics(font)
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
         chk_right = 40
         text_w = w - dl_w - chk_right - 8
         if text_w < 20:
             text_w = 20
-        br_rect = QRect(0, 0, text_w, 1677216)
-        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
-        h = max(40, br.height() + 10)
-        return QSize(w, h)
+        temp_label = QLabel(self.task.get("text", ""))
+        temp_label.setFont(font)
+        temp_label.setWordWrap(True)
+        temp_label.setTextFormat(Qt.PlainText)
+        temp_label.setFixedWidth(text_w)
+        h = temp_label.sizeHint().height()
+        if h <= 0:
+            h = font.pixelSize() * 1.2
+        h += 10
+        return QSize(w, max(40, h))
 
     def heightForWidth(self, width: Optional[int] = None) -> int:
         if width is None:
             width = self.width()
         font = QFont(get_font_family(), self.font_size)
-        fm = QFontMetrics(font)
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12
         chk_right = 40
         text_w = width - dl_w - chk_right - 8
         if text_w < 20:
             text_w = 20
-        br_rect = QRect(0, 0, text_w, 1677216)
-        br = fm.boundingRect(br_rect, Qt.AlignVCenter | Qt.TextWordWrap, self.task.get("text", ""))
-        return max(40, br.height() + 10)
+        temp_label = QLabel(self.task.get("text", ""))
+        temp_label.setFont(font)
+        temp_label.setWordWrap(True)
+        temp_label.setTextFormat(Qt.PlainText)
+        temp_label.setFixedWidth(text_w)
+        h = temp_label.sizeHint().height()
+        if h <= 0:
+            h = font.pixelSize() * 1.2
+        h += 10
+        return max(40, h)
