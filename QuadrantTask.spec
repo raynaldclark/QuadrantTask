@@ -5,9 +5,10 @@ pathex=[os.path.abspath('.')]
 
 a = Analysis(
     ['main.py'],
+    pathex=[os.path.abspath('.')],
     binaries=[],
     datas=[('source', 'source')],
-    hiddenimports=['constants', 'task_card', 'quadrant_panel', 'dialogs', 'data'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
