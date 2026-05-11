@@ -3,8 +3,6 @@ __pycache__/
 *.pyo
 *.spec.bak
 build/
-dist/
 *.log
 
-dist/QuadrantTask.exe
 quadrant_data.json
