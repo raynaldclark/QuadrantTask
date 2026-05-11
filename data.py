@@ -60,8 +60,8 @@ def load_data() -> Dict[str, Any]:
                 data["font_family"] = "Microsoft YaHei"
 
             return data
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[WARN] 数据文件加载失败: {exc}，将使用默认数据")
 
     return default_data()
 
@@ -82,6 +82,12 @@ def cli_add_task(quadrant: str, title: str, deadline: str = "") -> Optional[str]
     if quadrant not in [q["key"] for q in QUADS]:
         print(f"无效的象限: {quadrant}")
         return None
+    if deadline:
+        try:
+            datetime.strptime(deadline, "%Y-%m-%d")
+        except ValueError:
+            print(f"无效的日期格式: {deadline}，请使用 YYYY-MM-DD")
+            return None
     data = load_data()
     task = {
         "id": str(uuid.uuid4()),
@@ -166,7 +172,6 @@ def cli_edit_task(task_id: str, title: str = "", desc: str = "", deadline: str =
                     task["done"] = done
                 if quadrant and quadrant in [q["key"] for q in QUADS]:
                     data["tasks"][q_key].remove(task)
-                    task["deadline"] = task.get("deadline", deadline)
                     data["tasks"][quadrant].append(task)
                 save_data(data)
                 print(f"任务已更新: {task_id}")

@@ -134,6 +134,8 @@ class TaskCard(QWidget):
         deadline_thresholds: Dict[str, int],
     ) -> QColor:
         """根据剩余天数返回对应的截止日期颜色 QColor。"""
+        if not dl:
+            return QColor(deadline_colors.get("none", "#94A3B8"))
         try:
             d = datetime.strptime(dl, "%Y-%m-%d").date()
             diff = (d - date.today()).days
@@ -174,8 +176,6 @@ class TaskCard(QWidget):
         chk_rect = self._checkbox_rect()
         checked = self.task.get("done", False)
         self._draw_checkbox(painter, chk_rect, checked)
-
-        self._update_text_label()
 
         fm_dl = QFontMetrics(QFont(get_font_family(), self.font_size - 2))
         dl_w = fm_dl.horizontalAdvance("2025-12-31") + 12

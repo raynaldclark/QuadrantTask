@@ -438,50 +438,27 @@ class MainWindow(QMainWindow):
 
         x, y = pos.x(), pos.y()
         width, height = self.width(), self.height()
-        snapped = False
         new_x, new_y = x, y
 
+        # 找到窗口中心点所在的屏幕
+        center = QPoint(x + width // 2, y + height // 2)
+        target_screen = None
         for screen in screens:
-            screen_geo = screen.geometry()
-            avail_geo = screen.availableGeometry()
+            if screen.geometry().contains(center):
+                target_screen = screen
+                break
 
-            if screen_geo.contains(QPoint(x + width // 2, y + height // 2)):
-                if x <= screen_geo.left() + SNAP_THRESHOLD:
-                    new_x = screen_geo.left()
-                    snapped = True
-                elif x + width >= screen_geo.right() - SNAP_THRESHOLD:
-                    new_x = screen_geo.right() - width
-                    snapped = True
-
-                if y <= avail_geo.top() + SNAP_THRESHOLD:
-                    new_y = avail_geo.top()
-                    snapped = True
-                elif y + height >= avail_geo.bottom() - SNAP_THRESHOLD:
-                    new_y = avail_geo.bottom() - height
-                    snapped = True
-
-                if snapped:
-                    break
-
-        if not snapped:
-            for screen in screens:
-                screen_geo = screen.geometry()
-                avail_geo = screen.availableGeometry()
-                center_x = x + width // 2
-                center_y = y + height // 2
-
-                if (screen_geo.left() <= center_x <= screen_geo.right() and
-                    screen_geo.top() <= center_y <= screen_geo.bottom()):
-                    if x <= screen_geo.left() + SNAP_THRESHOLD:
-                        new_x = screen_geo.left()
-                    elif x + width >= screen_geo.right() - SNAP_THRESHOLD:
-                        new_x = screen_geo.right() - width
-
-                    if y <= avail_geo.top() + SNAP_THRESHOLD:
-                        new_y = avail_geo.top()
-                    elif y + height >= avail_geo.bottom() - SNAP_THRESHOLD:
-                        new_y = avail_geo.bottom() - height
-                    break
+        if target_screen:
+            avail_geo = target_screen.availableGeometry()
+            screen_geo = target_screen.geometry()
+            if x <= screen_geo.left() + SNAP_THRESHOLD:
+                new_x = screen_geo.left()
+            elif x + width >= screen_geo.right() - SNAP_THRESHOLD:
+                new_x = screen_geo.right() - width
+            if y <= avail_geo.top() + SNAP_THRESHOLD:
+                new_y = avail_geo.top()
+            elif y + height >= avail_geo.bottom() - SNAP_THRESHOLD:
+                new_y = avail_geo.bottom() - height
 
         return QPoint(new_x, new_y)
 
@@ -887,40 +864,6 @@ class MainWindow(QMainWindow):
         self.save()
         self.panels[q_key].render_tasks()
 
-    def _show_edit_dialog(self, task: Dict[str, Any], q_key: str) -> None:
-        """显示编辑任务对话框"""
-        quad_titles = [q["title"] for q in QUADS]
-        quad_keys = [q["key"] for q in QUADS]
-        old_text = task["text"]
-        old_deadline = task.get("deadline", "")
-        dialog = EditTaskDialog(task, quad_keys, quad_titles, q_key,
-                                self.data["font_size"], self)
-        if dialog.exec() == EditTaskDialog.Accepted:
-            result = dialog.get_result()
-            if result:
-                new_text, new_dl, new_q_key = result
-                if new_text != old_text or new_dl != old_deadline or new_q_key != q_key:
-                    self.push_undo(
-                        UndoAction.EDIT,
-                        q_key=q_key,
-                        task_id=task["id"],
-                        old_text=old_text,
-                        old_deadline=old_deadline
-                    )
-                task["text"] = new_text
-                task["deadline"] = new_dl
-                if new_q_key != q_key:
-                    self.data["tasks"][q_key] = [
-                        t for t in self.data["tasks"][q_key] if t["id"] != task["id"]
-                    ]
-                    if new_q_key not in self.data["tasks"]:
-                        self.data["tasks"][new_q_key] = []
-                    self.data["tasks"][new_q_key].append(task)
-                self.save()
-                for key in set([q_key, new_q_key]):
-                    if key in self.panels:
-                        self.panels[key].render_tasks()
-
     def move_task(self, src_key: str, tgt_key: str, task_id: str) -> None:
         """移动任务从一个象限到另一个象限（公开接口）"""
         src_tasks = self.data["tasks"].get(src_key, [])
@@ -987,7 +930,7 @@ class MainWindow(QMainWindow):
                 break
         if not task_data or old_index == -1:
             return
-        if new_index < 0 or new_index >= len(tasks):
+        if new_index < 0 or new_index > len(tasks):
             return
         if old_index == new_index:
             return

@@ -3,10 +3,12 @@
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from PySide6.QtCore import QEvent, QObject, Qt, Slot
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
-from PySide6.QtWidgets import QScrollArea
+from PySide6.QtCore import QEvent, QObject, Qt, Slot, QPoint, QTimer
+from PySide6.QtGui import QFont, QAction, QIcon
+from PySide6.QtWidgets import (
+    QFrame, QHBoxLayout, QLabel, QMenu, QSizePolicy, QVBoxLayout, QWidget, QScrollArea,
+    QPushButton, QWidgetAction
+)
 
 from constants import get_font_family
 from task_card import TaskCard
@@ -204,14 +206,155 @@ class QuadrantPanel(QFrame):
         )
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is self.scroll.viewport() and event.type() == QEvent.Type.MouseButtonDblClick:
-            self.main_window.show_add_dialog(self.cfg["title"])
-            return True
-        if obj is self.scroll.viewport() and event.type() == QEvent.Type.Resize:
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(0, self._update_card_widths)
-            return False
+        if obj is self.scroll.viewport():
+            if event.type() == QEvent.Type.MouseButtonDblClick:
+                self.main_window.show_add_dialog(self.cfg["title"])
+                return True
+            elif event.type() == QEvent.Type.ContextMenu:
+                self._show_context_menu(event.globalPos())
+                return True
+            elif event.type() == QEvent.Type.Resize:
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(0, self._update_card_widths)
+                return False
         return super().eventFilter(obj, event)
+
+    def _show_context_menu(self, global_pos: QPoint) -> None:
+        """显示右键菜单，字体调整时保持菜单不消失"""
+        menu = self._build_context_menu()
+
+        def on_triggered(action):
+            # QWidgetAction（字体按钮）触发后标记 reopen
+            if isinstance(action, QWidgetAction):
+                self._font_menu_reopen = True
+
+        def on_about_to_hide():
+            if getattr(self, '_font_menu_reopen', False):
+                self._font_menu_reopen = False
+                QTimer.singleShot(0, lambda: self._show_context_menu(global_pos))
+
+        menu.triggered.connect(on_triggered)
+        menu.aboutToHide.connect(on_about_to_hide)
+        menu.popup(global_pos)
+
+    def _build_context_menu(self) -> QMenu:
+        """构建右键菜单（与工具栏功能一致）"""
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background: #FFFFFF;
+                border: 1px solid #E2E8F0;
+                border-radius: 8px;
+                padding: 6px;
+            }
+            QMenu::item {
+                padding: 6px 28px 6px 12px;
+                border-radius: 6px;
+                color: #1E293B;
+                font-size: 15px;
+            }
+            QMenu::item:selected {
+                background: #F1F5F9;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #E2E8F0;
+                margin: 6px 12px;
+            }
+        """)
+
+        # 获取图标的辅助方法
+        def get_icon(filename: str) -> QIcon:
+            return self.main_window._svg_icon(filename, 32)
+
+        # 1. 添加任务
+        action_add = QAction(get_icon("add.svg"), "添加任务", self)
+        action_add.triggered.connect(lambda: self.main_window.show_add_dialog(self.cfg["title"]))
+        menu.addAction(action_add)
+
+        menu.addSeparator()
+
+        # 2. 撤销（根据撤销栈状态决定图标）
+        has_undo = len(self.main_window._undo_stack) > 0
+        undo_icon_file = "undo.svg" if has_undo else "undo2.svg"
+        action_undo = QAction(get_icon(undo_icon_file), "撤销", self)
+        action_undo.setEnabled(has_undo)
+        action_undo.triggered.connect(self.main_window._undo)
+        menu.addAction(action_undo)
+
+        # 3. 显示已完成（切换状态）
+        show_done = self.main_window.show_done_cb.isChecked()
+        show_done_icon = "fin2.svg" if show_done else "fin.svg"
+        action_show_done = QAction(get_icon(show_done_icon), "显示已完成" if show_done else "隐藏已完成", self)
+        action_show_done.triggered.connect(self.main_window.show_done_cb.toggle)
+        menu.addAction(action_show_done)
+
+        menu.addSeparator()
+
+        # 4. 清空已完成
+        action_clear_done = QAction(get_icon("delfin.svg"), "清空已完成", self)
+        action_clear_done.triggered.connect(self.main_window._clear_done)
+        menu.addAction(action_clear_done)
+
+        # 5. 清空全部
+        action_clear_all = QAction(get_icon("delall.svg"), "清空全部", self)
+        action_clear_all.triggered.connect(self.main_window._clear_all)
+        menu.addAction(action_clear_all)
+
+        menu.addSeparator()
+
+        # 6. 字体大小调节（用 QWidgetAction 嵌入按钮，不触发菜单关闭）
+        font_btns: list[QPushButton] = []
+
+        def _refresh_font_btn_texts() -> None:
+            """刷新所有字体按钮的显示字号"""
+            new_size = self.main_window.data.get("font_size", 12)
+            for b in font_btns:
+                prefix = "A+" if b.text().startswith("A+") else "A-"
+                b.setText(f"{prefix}  字体大小 ({new_size})")
+
+        def make_font_btn(text, delta):
+            btn = QPushButton(f"{text}  字体大小 ({self.main_window.data.get('font_size', 12)})")
+            font_btns.append(btn)
+            btn.setFixedHeight(28)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: transparent; border: none; border-radius: 4px;
+                    color: #1E293B; font-size: 15px; text-align: left;
+                    padding: 4px 8px;
+                }
+                QPushButton:hover { background: #F1F5F9; }
+            """)
+            btn.clicked.connect(lambda: (
+                self.main_window._change_font(delta),
+                _refresh_font_btn_texts(),
+            ))
+            return btn
+
+        wa_up = QWidgetAction(menu)
+        wa_up.setDefaultWidget(make_font_btn("A+", 1))
+        menu.addAction(wa_up)
+
+        wa_down = QWidgetAction(menu)
+        wa_down.setDefaultWidget(make_font_btn("A-", -1))
+        menu.addAction(wa_down)
+
+        menu.addSeparator()
+
+        # 8. 设置
+        action_settings = QAction(get_icon("setting.svg"), "设置", self)
+        action_settings.triggered.connect(self.main_window._show_settings)
+        menu.addAction(action_settings)
+
+        menu.addSeparator()
+
+        # 9. 关闭程序
+        action_close = QAction(get_icon("close.svg"), "关闭程序", self)
+        action_close.triggered.connect(self.main_window.close)
+        menu.addAction(action_close)
+
+        return menu
 
     def dragEnterEvent(self, event) -> None:
         mime = event.mimeData()
@@ -252,7 +395,7 @@ class QuadrantPanel(QFrame):
                     DRAG_OFFSET = 60
                     local_y = viewport_y + scroll_offset - DRAG_OFFSET
                     drop_index = self._calculate_drop_index(local_y)
-                    max_index = self.task_layout.count() - 2
+                    max_index = self.task_layout.count() - 1
                     drop_index = min(drop_index, max_index)
                     drop_index = max(drop_index, 0)
                     self.main_window.reorder_task(src_key, task_id, drop_index)
@@ -262,7 +405,7 @@ class QuadrantPanel(QFrame):
                     DRAG_OFFSET = 60
                     local_y = viewport_y + scroll_offset - DRAG_OFFSET
                     drop_index = self._calculate_drop_index(local_y)
-                    max_index = self.task_layout.count() - 2
+                    max_index = self.task_layout.count() - 1
                     drop_index = min(drop_index, max_index)
                     drop_index = max(drop_index, 0)
                     self.main_window.move_task_to_index(src_key, self.q_key, task_id, drop_index)

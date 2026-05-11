@@ -2,7 +2,7 @@
 
 基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![四象限任务板](https://img.shields.io/badge/version-v1.3.1-blue)
+![四象限任务板](https://img.shields.io/badge/version-v1.3.3-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
@@ -66,7 +66,40 @@ python main.py
 
 ## 版本
 
-v1.3.1
+v1.3.3
+
+### v1.3.3 右键菜单功能
+
+- 为每个象限面板添加右键菜单，菜单包含工具栏所有功能（图标+文字）
+- 右键菜单选项：撤销、显示已完成/隐藏已完成、清空已完成、清空全部、添加任务、设置、关闭程序
+- 撤销按钮根据撤销栈状态动态切换图标（undo.svg / undo2.svg）并启用/禁用
+- 显示已完成按钮根据当前状态动态切换图标和文字
+- 右键菜单样式优化：图标尺寸、文字大小、间距、圆角全面放大，更易点击
+
+### v1.3.2 Bug 修复和性能优化
+
+#### 拖拽排序修复
+- 修复拖拽排序边界问题：非最后一个任务现在可以正常移动到最后位置
+- 修复 `_calculate_drop_index` 的 `max_index` 计算（`count()-2` → `count()-1`）
+- 修复 `reorder_task` 边界检查，允许 `new_index == len(tasks)`
+
+#### 数据持久化修复
+- 修复 `data.py` `cli_edit_task`：移动任务时截止日期不再被覆盖
+- 修复 `data.py` `load_data`：异常处理改进，不再静默吞掉错误
+- 修复 `data.py` `cli_add_task`：添加日期格式验证，拒绝无效日期
+- 修复 `data.py` `cli_edit_task`：deadline 默认值从空字符串改为 `None`
+
+#### 界面优化
+- 修复 `task_card.py`：移除 `paintEvent` 中的 `_update_text_label()` 调用，提升渲染性能
+- 修复 `task_card.py`：`deadline_color` 添加空截止日期检查，避免解析错误
+- 修复 `quadrant_panel.py`：`clear_all` 添加撤销支持
+- 简化 `main_window.py` `_snap_to_edges` 重复循环逻辑（52 行 → 22 行）
+- 修复 `main_window.py`：删除重复的 `_show_edit_dialog` 方法定义
+
+#### CLI 改进
+- 修复 `main.py` CLI 执行逻辑，移除无效的 `run_cli()` 函数
+- 修复 `--cli` 标志处理，确保 CLI 命令正确执行
+- 新增 `requirements.txt` 明确指定 PySide6 依赖
 
 ### v1.3.1 窗口边缘吸附功能
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """四象限任务管理器 - PySide6 版"""
 
-__version__ = "1.3.1"
+__version__ = "1.3.3"
 __all__ = [
     "constants",
     "data",
