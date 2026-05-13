@@ -7,10 +7,10 @@ import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from PySide6.QtCore import QByteArray, QEvent, QFileSystemWatcher, QPoint, QRect, QSize, Qt, Slot, QTimer
-from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QCursor
+from PySide6.QtGui import QColor, QFont, QIcon, QPalette, QPixmap, QPainter, QCursor
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QMainWindow,
+    QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
     QPushButton, QSizePolicy, QStyle, QVBoxLayout, QWidget, QMessageBox,
     QApplication,
 )
@@ -91,6 +91,11 @@ class MainWindow(QMainWindow):
         self.show_done_cb = QCheckBox()
         self.show_done_cb.setChecked(self.data.get("show_done", True))
         self.show_done_cb.stateChanged.connect(self._on_show_done_changed)
+
+        self.show_countdown_cb = QCheckBox()
+        self.show_countdown_cb.setChecked(self.data.get("show_countdown", False))
+        self.show_countdown_cb.stateChanged.connect(self._on_show_countdown_changed)
+
         self._build_toolbar()
         self._update_top_icon()  # 确保工具栏图标状态正确
         self._build_board()
@@ -98,6 +103,7 @@ class MainWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowStaysOnTopHint, self._is_topmost)
         self._apply_show_done_state()
         self._update_show_done_icon()
+        self._update_countdown_icon()
         self._update_undo_icon()
 
         self._file_watcher = QFileSystemWatcher()
@@ -112,6 +118,7 @@ class MainWindow(QMainWindow):
         self._is_initializing = False
         self.setMouseTracking(True)
         self.setCursor(Qt.ArrowCursor)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.installEventFilter(self)
 
         self._mouse_check_timer = QTimer(self)
@@ -311,7 +318,7 @@ class MainWindow(QMainWindow):
                 renderer.render(p1, QRect(0, 0, logical_size, logical_size))
                 p1.end()
                 pixmap_1x.setDevicePixelRatio(1.0)
-                icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.Off)  # Off 状态，常规显示
+                icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.Off)
 
                 # 2x 版本：dpr=2.0
                 pixmap_2x = QPixmap(logical_size * 2, logical_size * 2)
@@ -346,6 +353,25 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(self._build_title_section())
         layout.addStretch()
+
+        # 搜索框
+        self._search_input = QLineEdit()
+        self._search_input.setPlaceholderText("搜索任务...")
+        self._search_input.setFixedWidth(160)
+        self._search_input.setFixedHeight(32)
+        self._search_input.setFont(QFont(get_font_family(), 9))
+        self._search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background: #F1F5F9; border: 1px solid #E2E8F0;
+                border-radius: 6px; padding: 0 8px; color: {TEXT_MAIN};
+            }}
+            QLineEdit:focus {{
+                border: 1px solid #3B82F6;
+            }}
+        """)
+        self._search_input.textChanged.connect(self._on_search_changed)
+        layout.addWidget(self._search_input)
+
         layout.addLayout(self._build_font_controls())
         layout.addSpacing(10)
 
@@ -370,6 +396,15 @@ class MainWindow(QMainWindow):
         )
         self.show_done_cb.stateChanged.connect(self._update_show_done_icon)
         layout.addWidget(self._show_done_wrapper)
+
+        self._countdown_wrapper = self._create_toolbar_toggle_btn(
+            "countdown.svg", "countdown2.svg",
+            "倒计时显示",
+            self.show_countdown_cb.isChecked(),
+            lambda: self.show_countdown_cb.toggle()
+        )
+        self.show_countdown_cb.stateChanged.connect(self._update_countdown_icon)
+        layout.addWidget(self._countdown_wrapper)
 
         layout.addWidget(self._create_toolbar_icon_btn("setting.svg", "设置", self._show_settings))
         layout.addWidget(self._create_toolbar_icon_btn("delfin.svg", "清空已完成", self._clear_done))
@@ -448,6 +483,8 @@ class MainWindow(QMainWindow):
         bar.mouseReleaseEvent = lambda e: self._on_title_bar_mouse_release(e)
 
         return bar
+
+    # ─── 主题管理 ─────────────────────────────────────────────────────────────
 
     def _on_title_bar_mouse_press(self, event):
         if event.button() == Qt.LeftButton:
@@ -725,6 +762,31 @@ class MainWindow(QMainWindow):
         is_on = self.show_done_cb.isChecked()
         icon_file = "fin2.svg" if is_on else "fin.svg"
         self._show_done_wrapper._btn.setIcon(self._svg_icon(icon_file, 36))
+
+    @Slot(str)
+    def _on_search_changed(self, text: str) -> None:
+        """搜索框文字变化，过滤任务"""
+        keyword = text.strip().lower()
+        for panel in self.panels.values():
+            panel.filter_tasks(keyword)
+
+    @Slot(int)
+    def _on_show_countdown_changed(self, state: int) -> None:
+        """倒计时显示复选框状态改变"""
+        show = self.show_countdown_cb.isChecked()
+        self.data["show_countdown"] = show
+        self._update_countdown_icon()
+        for panel in self.panels.values():
+            panel.render_tasks()
+        self.save()
+
+    def _update_countdown_icon(self) -> None:
+        """更新倒计时按钮图标"""
+        if hasattr(self, '_countdown_wrapper') and self._countdown_wrapper is not None:
+            is_on = self.show_countdown_cb.isChecked()
+            icon_file = "countdown2.svg" if is_on else "countdown.svg"
+            self._countdown_wrapper._btn.setIcon(self._svg_icon(icon_file, 36))
+            self._countdown_wrapper._btn.repaint()
 
     @Slot(int)
     def _on_show_done_changed(self, state: int) -> None:
@@ -1031,6 +1093,10 @@ class MainWindow(QMainWindow):
             new_font = dialog.get_font_family()
             self.data["font_family"] = new_font
             _set_font_family(new_font)
+            # 同步倒计时显示设置
+            self.data["show_countdown"] = dialog.get_show_countdown()
+            self.show_countdown_cb.setChecked(self.data["show_countdown"])
+            self._update_countdown_icon()
             self.save()
             self._rebuild_ui()
             for panel in self.panels.values():
@@ -1125,3 +1191,27 @@ class MainWindow(QMainWindow):
         self.save()
         self._file_watcher.deleteLater()
         event.accept()
+
+    def keyPressEvent(self, event) -> None:
+        """处理键盘快捷键"""
+        key = event.key()
+        modifiers = event.modifiers()
+
+        # Ctrl+Z：撤销
+        if modifiers == Qt.ControlModifier and key == Qt.Key_Z:
+            self._undo()
+            event.accept()
+            return
+
+        # Ctrl+N：新建任务
+        if modifiers == Qt.ControlModifier and key == Qt.Key_N:
+            self.show_add_dialog()
+            event.accept()
+            return
+
+        # Ctrl+Shift+Z：重做（占位，当前无重做栈）
+        if modifiers == (Qt.ControlModifier | Qt.ShiftModifier) and key == Qt.Key_Z:
+            event.accept()
+            return
+
+        super().keyPressEvent(event)

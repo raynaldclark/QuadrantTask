@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""全局常量：象限定义、颜色、字体等"""
+"""全局常量：象限定义、颜色、字体、主题等"""
 
 from dataclasses import dataclass
 from typing import Dict, List

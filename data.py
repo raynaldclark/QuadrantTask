@@ -32,6 +32,9 @@ def default_data() -> Dict[str, Any]:
         "geometry": None,
         "deadline_colors": dict(DEADLINE_COLORS_DEFAULT),
         "deadline_thresholds": dict(DEADLINE_THRESHOLDS_DEFAULT),
+        "show_done": True,
+        "show_countdown": False,
+        "is_topmost": False,
         "tasks": {q["key"]: [] for q in QUADS},
     }
 
@@ -61,6 +64,9 @@ def load_data() -> Dict[str, Any]:
 
             if "is_topmost" not in data:
                 data["is_topmost"] = False
+
+            if "show_countdown" not in data:
+                data["show_countdown"] = False
 
             return data
         except (json.JSONDecodeError, OSError) as exc:
@@ -160,15 +166,14 @@ def cli_delete_all(quadrant: str = "") -> int:
 
 def cli_edit_task(task_id: str, title: str = "", desc: str = "", deadline: str = "",
                   done: Optional[bool] = None, quadrant: str = "") -> bool:
-    """编辑任务"""
+    """编辑任务（desc 参数已废弃，保留仅为向后兼容，不写入数据）"""
     data = load_data()
     for q_key, tasks in data["tasks"].items():
         for task in tasks:
             if task["id"] == task_id:
                 if title:
                     task["text"] = title
-                if desc:
-                    task["desc"] = desc
+                # desc 字段已废弃（数据模型无此字段），保留参数仅为 CLI 向后兼容
                 if deadline is not None:
                     task["deadline"] = deadline
                 if done is not None:

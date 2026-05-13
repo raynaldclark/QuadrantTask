@@ -34,6 +34,11 @@ class QuadrantPanel(QFrame):
         self.q_key = cfg["key"]
         self.show_done = False
         self._highlighted = False
+        self._task_cards: List[TaskCard] = []
+        self._search_keyword = ""
+        self._width_timer = QTimer(self)
+        self._width_timer.setSingleShot(True)
+        self._width_timer.timeout.connect(self._apply_width_update)
 
         self._setup_ui()
 
@@ -44,6 +49,7 @@ class QuadrantPanel(QFrame):
             if item.widget():
                 item.widget().deleteLater()
 
+        self._task_cards.clear()
         tasks = self.data["tasks"].get(self.q_key, [])
         fs = self.data["font_size"]
         visible = [t for t in tasks if not t.get("done") or self.show_done]
@@ -58,10 +64,13 @@ class QuadrantPanel(QFrame):
                 on_toggle=self._on_toggle,
                 on_delete=self._on_delete,
                 on_edit=self._on_edit,
+                show_countdown=self.data.get("show_countdown", False),
             )
             card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
             self.task_layout.insertWidget(self.task_layout.count() - 1, card)
+            self._task_cards.append(card)
 
+        self._apply_search_filter()
         self.update_count()
         from PySide6.QtCore import QTimer
         QTimer.singleShot(0, self._update_card_widths)
@@ -71,6 +80,11 @@ class QuadrantPanel(QFrame):
         self.render_tasks()
 
     def _update_card_widths(self) -> None:
+        """防抖：延迟更新卡片宽度（50ms 合并连续 resize 事件）"""
+        self._width_timer.start(50)
+
+    def _apply_width_update(self) -> None:
+        """实际执行卡片宽度更新"""
         scroll_width = self.scroll.viewport().width()
         if scroll_width > 50:
             new_width = scroll_width - 12
@@ -96,6 +110,21 @@ class QuadrantPanel(QFrame):
         self.data["tasks"][self.q_key] = []
         self.main_window.save()
         self.render_tasks()
+
+    def filter_tasks(self, keyword: str) -> None:
+        """根据关键词过滤任务（仅控制显示，不修改数据）"""
+        self._search_keyword = keyword.lower()
+        self._apply_search_filter()
+
+    def _apply_search_filter(self) -> None:
+        """应用当前搜索关键词到任务卡片"""
+        keyword = self._search_keyword
+        for card in self._task_cards:
+            if not keyword:
+                card.setVisible(True)
+            else:
+                text = card.task.get("text", "").lower()
+                card.setVisible(keyword in text)
 
     def update_count(self) -> None:
         """更新任务计数显示"""

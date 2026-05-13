@@ -2,7 +2,7 @@
 
 基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![四象限任务板](https://img.shields.io/badge/version-v1.3.4-blue)
+![四象限任务板](https://img.shields.io/badge/version-v1.3.5-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
@@ -66,7 +66,19 @@ python main.py
 
 ## 版本
 
-v1.3.4
+v1.3.5
+
+### v1.3.5 功能增强和Bug修复
+
+- 修复 `data.py` `cli_edit_task`：desc 字段不再被垃圾数据覆盖
+- 修复 `dialogs.py`：版本号改为动态读取 `__version__`，消除硬编码
+- 键盘快捷键支持：Ctrl+W 关闭窗口、Ctrl+Shift+R 重置数据
+- 动态版本号：统一从 `__init__.py` 导入，所有界面版本号实时同步
+- 工具栏新增「打开数据目录」按钮，一键打开数据文件所在文件夹
+- 任务搜索过滤栏：支持按标题实时过滤当前象限任务
+- 截止日期倒计时显示切换：可开启/关闭「还有X天」倒计时提示
+- 拖拽防抖优化：降低拖拽操作触发频率，提升界面响应流畅度
+- 修复 `main_window.py`：QLineEdit 和 QCheckBox 未导入导致 NameError 问题
 
 ### v1.3.4 窗口置顶功能
 

@@ -40,6 +40,7 @@ class TaskCard(QWidget):
         on_toggle: Callable[[Dict[str, any]], None],
         on_delete: Callable[[str], None],
         on_edit: Callable[[Dict[str, any]], None],
+        show_countdown: bool = False,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
@@ -48,6 +49,7 @@ class TaskCard(QWidget):
         self.font_size = font_size
         self.deadline_colors = deadline_colors
         self.deadline_thresholds = deadline_thresholds
+        self.show_countdown = show_countdown
         self.on_toggle = on_toggle
         self.on_delete = on_delete
         self.on_edit = on_edit
@@ -189,7 +191,22 @@ class TaskCard(QWidget):
             dl_rect = self.rect().adjusted(
                 self.width() - dl_w, 0, -5, 0
             )
-            painter.drawText(dl_rect, Qt.AlignVCenter | Qt.AlignRight, dl)
+            if self.show_countdown:
+                try:
+                    from datetime import date, datetime
+                    d = datetime.strptime(dl, "%Y-%m-%d").date()
+                    diff = (d - date.today()).days
+                    if diff < 0:
+                        text = f"已过期 {abs(diff)} 天"
+                    elif diff == 0:
+                        text = "今天截止"
+                    else:
+                        text = f"还有 {diff} 天"
+                except ValueError:
+                    text = dl
+            else:
+                text = dl
+            painter.drawText(dl_rect, Qt.AlignVCenter | Qt.AlignRight, text)
 
         if self._show_actions:
             bar_h = fm_dl.lineSpacing()

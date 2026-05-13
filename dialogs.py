@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 """对话框：AddTaskDialog / EditTaskDialog / SettingsDialog"""
 
+import os
+import subprocess
 import uuid
 from typing import Callable, Dict, List, Optional, Tuple, Any
 
 from PySide6.QtCore import Qt, QObject, QPoint, QRect, QEvent
 from PySide6.QtGui import QColor, QFont, QIntValidator, QMouseEvent, QFontDatabase
 from PySide6.QtWidgets import (
-    QColorDialog, QFontComboBox, QDialog, QFrame, QGridLayout,
+    QCheckBox, QColorDialog, QFontComboBox, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QPushButton, QSpinBox,
     QTextEdit, QVBoxLayout, QWidget,
 )
+
+from __init__ import __version__
 
 
 class FontPreviewComboBox(QFontComboBox):
@@ -631,6 +635,21 @@ class SettingsDialog(QDialog):
         b.addLayout(font_row)
         b.addSpacing(16)
 
+        # 倒计时显示开关
+        countdown_row = QHBoxLayout()
+        countdown_row.setSpacing(8)
+        self._countdown_cb = QCheckBox("显示截止日期倒计时（如「还有3天」）")
+        self._countdown_cb.setFont(QFont(get_font_family(), self._fs - 2))
+        self._countdown_cb.setChecked(data.get("show_countdown", False))
+        self._countdown_cb.setStyleSheet(f"color:{TEXT_MAIN}; background:transparent;")
+        countdown_row.addWidget(self._countdown_cb)
+        countdown_row.addStretch()
+        b.addLayout(countdown_row)
+
+        b.addSpacing(16)
+
+        b.addSpacing(16)
+
         h = QLabel("截止日期颜色与阈值规则")
         h.setFont(QFont(get_font_family(), self._fs, QFont.Bold))
         h.setStyleSheet("color:#1E40AF; background:transparent; margin-bottom: 8px;")
@@ -672,6 +691,24 @@ class SettingsDialog(QDialog):
 
         b.addSpacing(16)
 
+        # 打开数据目录按钮
+        dir_row = QHBoxLayout()
+        dir_row.addStretch()
+        self._open_dir_btn = QPushButton("📂 打开数据目录")
+        self._open_dir_btn.setFont(QFont(get_font_family(), self._fs - 2))
+        self._open_dir_btn.setFixedHeight(28)
+        self._open_dir_btn.setCursor(Qt.PointingHandCursor)
+        self._open_dir_btn.setStyleSheet(f"""
+            QPushButton {{ background: #F1F5F9; color: {TEXT_SUB};
+                          border: 1px solid #E2E8F0; border-radius: 4px; }}
+            QPushButton:hover {{ background: #E2E8F0; }}
+        """)
+        self._open_dir_btn.clicked.connect(self._open_data_dir)
+        dir_row.addWidget(self._open_dir_btn)
+        b.addLayout(dir_row)
+
+        b.addSpacing(8)
+
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
@@ -700,7 +737,7 @@ class SettingsDialog(QDialog):
         btn_row.addWidget(self._ok_btn)
         b.addLayout(btn_row)
 
-        footer = QLabel("版本 1.2.4  |  开发者：Raynald")
+        footer = QLabel(f"版本 {__version__}  |  开发者：Raynald")
         footer.setFont(QFont(get_font_family(), self._fs - 4))
         footer.setStyleSheet(f"color:{TEXT_SUB}; background:transparent;")
         footer.setAlignment(Qt.AlignCenter)
@@ -727,8 +764,21 @@ class SettingsDialog(QDialog):
             self._on_font_change_callback(self._original_font_family)
         self.reject()
 
+    def _open_data_dir(self) -> None:
+        """打开数据文件所在目录"""
+        try:
+            from data import DATA_FILE
+            data_dir = os.path.dirname(os.path.abspath(DATA_FILE))
+            if os.path.isdir(data_dir):
+                os.startfile(data_dir)
+            else:
+                QMessageBox.warning(self, "提示", f"目录不存在：{data_dir}")
+        except Exception as exc:
+            QMessageBox.warning(self, "错误", f"无法打开目录：{exc}")
+
     def _on_ok(self) -> None:
         self._font_family = self._font_combo.currentText()
+
         self.accept()
 
     def get_colors(self) -> Dict[str, str]:
@@ -739,6 +789,10 @@ class SettingsDialog(QDialog):
 
     def get_font_family(self) -> str:
         return self._font_family
+
+    def get_show_countdown(self) -> bool:
+        return self._countdown_cb.isChecked()
+
 
     def _on_threshold_change(self, key: str, lbl: QLabel, base_text: str, spin: QWidget) -> None:
         lbl.setText(f"{base_text}")
