@@ -59,6 +59,9 @@ def load_data() -> Dict[str, Any]:
             if "font_family" not in data:
                 data["font_family"] = "Microsoft YaHei"
 
+            if "is_topmost" not in data:
+                data["is_topmost"] = False
+
             return data
         except (json.JSONDecodeError, OSError) as exc:
             print(f"[WARN] 数据文件加载失败: {exc}，将使用默认数据")

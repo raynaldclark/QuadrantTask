@@ -2,7 +2,7 @@
 
 基于 PySide6 的四象限时间管理工具，将任务按照重要性和紧急性分为四个象限进行管理。
 
-![四象限任务板](https://img.shields.io/badge/version-v1.3.3-blue)
+![四象限任务板](https://img.shields.io/badge/version-v1.3.4-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![PySide6](https://img.shields.io/badge/PySide6-6.0+-orange)
 
@@ -65,6 +65,17 @@ python main.py
 - `tasks` - 各象限任务列表
 
 ## 版本
+
+v1.3.4
+
+### v1.3.4 窗口置顶功能
+
+- 工具栏新增置顶按钮，支持一键置顶/取消置顶
+- 右键菜单新增"窗口置顶/取消置顶"选项
+- 置顶状态下图标显示蓝色高亮（top2.svg），未置顶显示普通黑色图标
+- 修复置顶切换时的窗口闪烁问题（使用 windowHandle().setFlags() 代替 setWindowFlag + show() 方案）
+- 修复 JSON 数据中字符串布尔值解析问题（bool() 强制转换）
+- 置顶状态持久化保存到数据文件
 
 v1.3.3
 

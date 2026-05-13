@@ -289,6 +289,13 @@ class QuadrantPanel(QFrame):
         action_show_done.triggered.connect(self.main_window.show_done_cb.toggle)
         menu.addAction(action_show_done)
 
+        # 3.5 窗口置顶（切换状态）
+        is_topmost = self.main_window._is_topmost
+        top_icon = "top2.svg" if is_topmost else "top.svg"
+        action_topmost = QAction(get_icon(top_icon), "取消置顶" if is_topmost else "窗口置顶", self)
+        action_topmost.triggered.connect(self.main_window._toggle_topmost)
+        menu.addAction(action_topmost)
+
         menu.addSeparator()
 
         # 4. 清空已完成

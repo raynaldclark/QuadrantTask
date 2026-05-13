@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """MainWindow：主窗口与工具栏"""
 
+import ctypes
 import os
 import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -51,6 +52,13 @@ class MainWindow(QMainWindow):
         self._drag_target_key: Optional[str] = None
         self._undo_stack: List[Dict[str, Any]] = []
         self._is_initializing = True
+        # 读取置顶状态，兼容布尔值和字符串 "true"/"false"
+        _raw = self.data.get("is_topmost", False)
+        if isinstance(_raw, str):
+            _raw = _raw.strip().lower()
+            self._is_topmost: bool = _raw == "true"
+        else:
+            self._is_topmost: bool = bool(_raw)
 
         self.setWindowTitle("四象限任务板")
         self._set_window_icon()
@@ -84,7 +92,10 @@ class MainWindow(QMainWindow):
         self.show_done_cb.setChecked(self.data.get("show_done", True))
         self.show_done_cb.stateChanged.connect(self._on_show_done_changed)
         self._build_toolbar()
+        self._update_top_icon()  # 确保工具栏图标状态正确
         self._build_board()
+        # 设置初始置顶标志（窗口尚未 show，直接用 setWindowFlag 安全无闪烁）
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self._is_topmost)
         self._apply_show_done_state()
         self._update_show_done_icon()
         self._update_undo_icon()
@@ -203,6 +214,28 @@ class MainWindow(QMainWindow):
         icon_file = "undo.svg" if has_undo else "undo2.svg"
         self._undo_wrapper._btn.setIcon(self._svg_icon(icon_file, 36))
 
+    def _update_top_icon(self) -> None:
+        """更新置顶按钮图标状态"""
+        if hasattr(self, '_topmost_wrapper') and self._topmost_wrapper is not None:
+            icon_file = "top2.svg" if self._is_topmost else "top.svg"
+            icon = self._svg_icon(icon_file, 36)
+            self._topmost_wrapper._btn.setIcon(icon)
+            self._topmost_wrapper._btn.repaint()
+
+    @Slot()
+    def _toggle_topmost(self) -> None:
+        """切换窗口置顶状态（使用 windowHandle 避免隐藏闪烁）"""
+        self._is_topmost = not self._is_topmost
+        self.data["is_topmost"] = self._is_topmost
+        # 通过 windowHandle().setFlags() 直接修改窗口标志，不触发隐藏
+        flags = self.windowHandle().flags()
+        if self._is_topmost:
+            self.windowHandle().setFlags(flags | Qt.WindowStaysOnTopHint)
+        else:
+            self.windowHandle().setFlags(flags & ~Qt.WindowStaysOnTopHint)
+        self._update_top_icon()
+        self.save()
+
     # ─── DPI 自适应工具方法 ────────────────────────────────────────────────────
 
     def _logical_to_physical(self, logical: int) -> int:
@@ -278,9 +311,9 @@ class MainWindow(QMainWindow):
                 renderer.render(p1, QRect(0, 0, logical_size, logical_size))
                 p1.end()
                 pixmap_1x.setDevicePixelRatio(1.0)
-                icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.On)
+                icon.addPixmap(pixmap_1x, QIcon.Normal, QIcon.Off)  # Off 状态，常规显示
 
-                # 2x 版本：dpr=2.0（无论当前 DPI 是否为 2.0 都添加，确保清晰）
+                # 2x 版本：dpr=2.0
                 pixmap_2x = QPixmap(logical_size * 2, logical_size * 2)
                 pixmap_2x.fill(Qt.transparent)
                 p2 = QPainter(pixmap_2x)
@@ -289,23 +322,13 @@ class MainWindow(QMainWindow):
                 renderer.render(p2, QRect(0, 0, logical_size * 2, logical_size * 2))
                 p2.end()
                 pixmap_2x.setDevicePixelRatio(2.0)
-                icon.addPixmap(pixmap_2x, QIcon.Normal, QIcon.On)
-
-                # 如果当前 DPI 是其他值（如 1.5, 1.75），也添加对应版本
-                scale = self.devicePixelRatio()
-                if scale != 1.0 and scale != 2.0:
-                    physical_size = int(logical_size * scale)
-                    pixmap_scale = QPixmap(physical_size, physical_size)
-                    pixmap_scale.fill(Qt.transparent)
-                    p_scale = QPainter(pixmap_scale)
-                    p_scale.setRenderHint(QPainter.Antialiasing)
-                    p_scale.setRenderHint(QPainter.SmoothPixmapTransform)
-                    renderer.render(p_scale, QRect(0, 0, physical_size, physical_size))
-                    p_scale.end()
-                    pixmap_scale.setDevicePixelRatio(scale)
-                    icon.addPixmap(pixmap_scale, QIcon.Normal, QIcon.On)
+                icon.addPixmap(pixmap_2x, QIcon.Normal, QIcon.Off)
 
                 return icon
+            else:
+                pass  # renderer invalid, return empty icon
+        else:
+            pass  # file not found, return empty icon
         return QIcon()
 
     # ─── 工具栏 ────────────────────────────────────────────────────────────────
@@ -325,6 +348,14 @@ class MainWindow(QMainWindow):
         layout.addStretch()
         layout.addLayout(self._build_font_controls())
         layout.addSpacing(10)
+
+        self._topmost_wrapper = self._create_toolbar_toggle_btn(
+            "top.svg", "top2.svg",
+            "窗口置顶",
+            self._is_topmost,
+            self._toggle_topmost
+        )
+        layout.addWidget(self._topmost_wrapper)
 
         self._undo_wrapper = self._create_toolbar_icon_btn(
             "undo.svg", "撤销", self._undo
@@ -1064,14 +1095,16 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(200, self._reload_data)
 
     def _reload_data(self) -> None:
-        """重新加载数据并刷新界面"""
+        """重新加载数据并刷新界面（不覆盖置顶状态，由 _toggle_topmost 独占控制）"""
         self.data = load_data()
+        # 注意：不在此处更新 _is_topmost，避免与 _toggle_topmost 冲突
         show = self.show_done_cb.isChecked()
         for panel in self.panels.values():
             panel.data = self.data
             panel.show_done = show
             panel.reload_tasks()
         self._update_undo_icon()
+        self._update_top_icon()
 
     def save(self) -> None:
         """保存数据到磁盘"""
